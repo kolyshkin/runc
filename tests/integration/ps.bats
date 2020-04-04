@@ -14,6 +14,7 @@ function teardown() {
 @test "ps" {
   # ps is not supported, it requires cgroups
   requires root
+  [ -n "${RUNC_USE_SYSTEMD}" ] && skip "test does not yet work with systemd"
 
   # start busybox detached
   runc run -d --console-socket $CONSOLE_SOCKET test_busybox
@@ -31,6 +32,7 @@ function teardown() {
 @test "ps -f json" {
   # ps is not supported, it requires cgroups
   requires root
+  [ -n "${RUNC_USE_SYSTEMD}" ] && skip "test does not yet work with systemd"
 
   # start busybox detached
   runc run -d --console-socket $CONSOLE_SOCKET test_busybox
@@ -47,6 +49,7 @@ function teardown() {
 @test "ps -e -x" {
   # ps is not supported, it requires cgroups
   requires root
+  [ -n "${RUNC_USE_SYSTEMD}" ] && skip "test does not yet work with systemd"
 
   # start busybox detached
   runc run -d --console-socket $CONSOLE_SOCKET test_busybox
