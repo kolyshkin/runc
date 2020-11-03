@@ -22,7 +22,7 @@ function teardown() {
 }
 
 @test "runc run [ro tmpfs mount]" {
-	update_config ' .mounts += [{"source": "tmpfs", "destination": "/mnt", "type": "tmpfs", "options": ["ro", "nodev", "nosuid", "mode=755"]}] 
+	update_config ' .mounts += [{"source": "tmpfs", "destination": "/mnt", "type": "tmpfs", "options": ["ro", "nodev", "nosuid", "mode=755"]}]
 			| .process.args |= ["grep", "^tmpfs /mnt", "/proc/mounts"]'
 
 	runc run test_ro_tmpfs_mount
