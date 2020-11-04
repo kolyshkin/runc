@@ -1,6 +1,6 @@
 #!/bin/bash
 set -eux -o pipefail
-VAGRANT_VERSION="2.2.7"
+VAGRANT_VERSION="2.2.10"
 
 # https://github.com/alvistack/ansible-role-virtualbox/blob/6887b020b0ca5c59ddb6620d73f053ffb84f4126/.travis.yml#L30
 apt-get update
@@ -9,3 +9,5 @@ wget https://releases.hashicorp.com/vagrant/${VAGRANT_VERSION}/vagrant_${VAGRANT
 dpkg -i vagrant_${VAGRANT_VERSION}_$(uname -m).deb
 rm -f vagrant_${VAGRANT_VERSION}_$(uname -m).deb
 vagrant plugin install vagrant-libvirt
+vagrant version
+virsh capabilities

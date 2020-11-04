@@ -1,0 +1,32 @@
+name: ci/centos7
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+jobs:
+  centos7:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v2
+      - name: vagrant up
+        run: |
+          sudo ./script/install-vagrant.sh
+          ln -sf Vagrantfile.fedora32 Vagrantfile
+          sudo virsh capabilities
+          sudo vagrant up && sudo mkdir -p /root/.ssh && sudo sh -c "vagrant ssh-config >> /root/.ssh/config"
+      - name: run tests
+        run: |
+          sudo ssh default -t 'cd /vagrant && sudo make localunittest'
+          # cgroupv2+systemd: test on vagrant host itself as we need systemd
+          sudo ssh default -t 'cd /vagrant && sudo make localintegration RUNC_USE_SYSTEMD=yes'
+          # same setup but with fs2 driver instead of systemd
+          sudo ssh default -t 'cd /vagrant && sudo make localintegration'
+          # cgroupv2+systemd (rootless)
+          sudo ssh default -t 'cd /vagrant && sudo make localrootlessintegration RUNC_USE_SYSTEMD=yes'
+          # same setup but with fs2 driver (rootless) instead of systemd
+          sudo ssh default -t 'cd /vagrant && sudo make localrootlessintegration'
+
+
