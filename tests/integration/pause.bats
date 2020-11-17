@@ -12,11 +12,11 @@ function teardown() {
 }
 
 @test "runc pause and resume" {
-	if [[ "$ROOTLESS" -ne 0 ]]; then
+	if [[ "$ROOTLESS" -ne 0 ]] ; then
 		requires rootless_cgroup
 		set_cgroups_path "$BUSYBOX_BUNDLE"
 	fi
-	requires cgroups_freezer
+        requires cgroups_freezer
 
 	# run busybox detached
 	runc run -d --console-socket "$CONSOLE_SOCKET" test_busybox
@@ -25,7 +25,7 @@ function teardown() {
 	testcontainer test_busybox running
 
 	# pause busybox
-	runc pause test_busybox
+	runc pause test_busybox     
 	[ "$status" -eq 0 ]
 
 	# test state of busybox is paused
