@@ -81,3 +81,12 @@ jobs:
         restore-keys: ${{ runner.os }}-go.sum-
     - name: verify deps
       run: make verify-dependencies
+
+  cross:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - uses: satackey/action-docker-layer-caching@v0.0.8
+      continue-on-error: true
+    - name: make cross
+      run: make cross
