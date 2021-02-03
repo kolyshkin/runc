@@ -32,7 +32,9 @@ $ sudo apt install -y dbus-user-session
 $ systemctl --user start dbus
 ```
 
-## Rootless
+## Features
+
+### Rootless
 On cgroup v2 hosts, rootless runc can talk to systemd to get cgroup permissions to be delegated.
 
 ```console
@@ -43,7 +45,7 @@ $ runc --systemd-cgroup run foo
 
 The container processes are executed in a cgroup like `/user.slice/user-$(id -u).slice/user@$(id -u).service/user.slice/runc-foo.scope`.
 
-### Configuring delegation
+#### Configuring delegation
 Typically, only `memory` and `pids` controllers are delegated to non-root users by default.
 
 ```console
@@ -61,3 +63,11 @@ Delegate=cpu cpuset io memory pids
 EOF
 # systemctl daemon-reload
 ```
+
+### Unified resource support
+
+runc supports unified resources as per [runtime spec](https://github.com/opencontainers/runtime-spec/blob/master/config-linux.md#unified),
+which is basically a way to directly specify cgroup parameters using cgroup
+file names and the desired contents.  In case of systemd cgroup driver, runc
+attempts to convert those parameters to systemd unit properties. Such conversion
+is done on a best-effort basis, as systemd does not support all cgroup properties.
