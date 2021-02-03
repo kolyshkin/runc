@@ -22,7 +22,8 @@ Notably, kernel older than 4.15 MUST NOT be used (unless you are running contain
 ### Systemd
 On cgroup v2 hosts, it is highly recommended to run runc with the systemd cgroup driver (`runc --systemd-cgroup`), though not mandatory.
 
-The recommended systemd version is 244 or later. Older systemd does not support delegation of `cpuset` controller.
+The recommended systemd version is 244 or later. Older systemd does not support a few features, including delegation of `cpuset` controller,
+and some unit properties (`CPUQuotaPeriodSec`, `AllowedCPUs`, and `AllowedMemoryNodes`).
 
 Make sure you also have the `dbus-user-session` (Debian/Ubuntu) or `dbus-daemon` (CentOS/Fedora) package installed, and that `dbus` is running. On Debian-flavored distros, this can be accomplished like so:
 
