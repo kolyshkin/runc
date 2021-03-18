@@ -24,6 +24,7 @@ function teardown() {
 
 	# delete test_busybox
 	runc delete --force test_busybox
+	[ "$status" -eq 0 ]
 
 	runc state test_busybox
 	[ "$status" -ne 0 ]
