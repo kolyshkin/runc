@@ -10,13 +10,29 @@ import (
 	"time"
 
 	"github.com/opencontainers/runc/libcontainer"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
 	"golang.org/x/sys/unix"
 )
 
 func killContainer(container libcontainer.Container) error {
-	_ = container.Signal(unix.SIGKILL, false)
+	err := container.Signal(unix.SIGKILL, false)
+	// A (wrapped) unix.ESRCH may be returned if the init process has
+	// exited right after checking its status and before sending SIGKILL.
+	if errors.Is(err, unix.ESRCH) {
+		logrus.Info("killContainer: got ESRCH (ignored)")
+		err = nil
+	}
+	// Similarly, ContainerNotRunning might be returned in case
+	// the init has just exited.
+	if lerr, ok := err.(libcontainer.Error); ok && lerr.Code() == libcontainer.ContainerNotRunning {
+		logrus.Info("killContainer: got ContainerNotRunning (ignored)")
+		err = nil
+	}
+	if err != nil {
+		logrus.WithError(err).Warn("killContainer:")
+	}
 	for i := 0; i < 100; i++ {
 		time.Sleep(100 * time.Millisecond)
 		if err := container.Signal(unix.Signal(0), false); err != nil {

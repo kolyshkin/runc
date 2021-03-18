@@ -83,6 +83,10 @@ func (e *genericError) Error() string {
 	return fmt.Sprintf("%s:%d: %s caused: %s", frame.File, frame.Line, e.Cause, e.Message)
 }
 
+func (e *genericError) Unwrap() error {
+	return e.Err
+}
+
 func (e *genericError) Code() ErrorCode {
 	return e.ECode
 }
