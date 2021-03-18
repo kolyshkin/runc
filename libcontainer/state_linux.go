@@ -116,9 +116,6 @@ func (r *runningState) status() Status {
 func (r *runningState) transition(s containerState) error {
 	switch s.(type) {
 	case *stoppedState:
-		if r.c.runType() == Running {
-			return newGenericError(fmt.Errorf("container still running"), ContainerNotStopped)
-		}
 		r.c.state = s
 		return nil
 	case *pausedState:
