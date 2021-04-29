@@ -1033,7 +1033,7 @@ func (c *linuxContainer) Checkpoint(criuOpts *CriuOpts) error {
 	}
 
 	// append optional manage cgroups mode
-	if criuOpts.ManageCgroupsMode != 0 {
+	if criuOpts.ManageCgroupsMode != -1 {
 		mode := criuOpts.ManageCgroupsMode
 		rpcOpts.ManageCgroupsMode = &mode
 	}
