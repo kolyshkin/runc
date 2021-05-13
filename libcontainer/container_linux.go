@@ -1445,37 +1445,29 @@ func (c *linuxContainer) Restore(process *Process, criuOpts *CriuOpts) error {
 }
 
 func (c *linuxContainer) criuApplyCgroups(pid int, req *criurpc.CriuReq) error {
-	// need to apply cgroups only on restore
-	if req.GetType() != criurpc.CriuReqType_RESTORE {
-		return nil
-	}
-
-	// XXX: Do we need to deal with this case? AFAIK criu still requires root.
-	if err := c.cgroupManager.Apply(pid); err != nil {
-		return err
-	}
-
-	if err := c.cgroupManager.Set(c.config.Cgroups.Resources); err != nil {
-		return err
-	}
-
-	if cgroups.IsCgroup2UnifiedMode() {
-		return nil
-	}
-	// the stuff below is cgroupv1-specific
-
-	path := fmt.Sprintf("/proc/%d/cgroup", pid)
-	cgroupsPaths, err := cgroups.ParseCgroupFile(path)
-	if err != nil {
-		return err
-	}
-
-	for c, p := range cgroupsPaths {
-		cgroupRoot := &criurpc.CgroupRoot{
-			Ctrl: proto.String(c),
-			Path: proto.String(p),
+	switch req.GetType() {
+	case criurpc.CriuReqType_RESTORE:
+		// On restore, create the cgroup, put criu swrk into it,
+		// and set cgroup resource limits.
+		// XXX: Do we need to deal with this case? AFAIK criu still requires root.
+		if err := c.cgroupManager.Apply(pid); err != nil {
+			return err
 		}
-		req.Opts.CgRoot = append(req.Opts.CgRoot, cgroupRoot)
+		if err := c.cgroupManager.Set(c.config.Cgroups.Resources); err != nil {
+			return err
+		}
+
+		fallthrough
+
+	case criurpc.CriuReqType_DUMP:
+		// On both dump and restore, set CgRoot.
+		for c, p := range c.cgroupManager.GetPaths() {
+			cgroupRoot := &criurpc.CgroupRoot{
+				Ctrl: proto.String(c),
+				Path: proto.String(p),
+			}
+			req.Opts.CgRoot = append(req.Opts.CgRoot, cgroupRoot)
+		}
 	}
 
 	return nil
