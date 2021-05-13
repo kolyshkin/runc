@@ -235,6 +235,7 @@ func (m *unifiedManager) Apply(pid int) error {
 	)
 
 	if c.Paths != nil {
+		logrus.Infof("unifiedManager.Apply: c.Paths non-nil (%v), applying pid=%d to m.path=%q", c.Paths, pid, m.path)
 		return cgroups.WriteCgroupProc(m.path, pid)
 	}
 
@@ -282,6 +283,7 @@ func (m *unifiedManager) Apply(pid int) error {
 
 	properties = append(properties, c.SystemdProps...)
 
+	logrus.Infof("startUnit(%q)", unitName)
 	if err := startUnit(m.dbus, unitName, properties); err != nil {
 		return fmt.Errorf("unable to start unit %q (properties %+v): %w", unitName, properties, err)
 	}
@@ -289,6 +291,7 @@ func (m *unifiedManager) Apply(pid int) error {
 	if err := m.initPath(); err != nil {
 		return err
 	}
+	logrus.Infof("m.path: %q", m.path)
 	if err := fs2.CreateCgroupPath(m.path, m.cgroups); err != nil {
 		return err
 	}

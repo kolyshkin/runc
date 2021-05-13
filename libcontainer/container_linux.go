@@ -1036,6 +1036,7 @@ func (c *linuxContainer) Checkpoint(criuOpts *CriuOpts) error {
 	if criuOpts.ManageCgroupsMode != -1 {
 		mode := criuOpts.ManageCgroupsMode
 		rpcOpts.ManageCgroupsMode = &mode
+		logrus.Infof("ManageCgroupMode: %d", mode)
 	}
 
 	var t criurpc.CriuReqType
@@ -1464,7 +1465,7 @@ func (c *linuxContainer) criuApplyCgroups(pid int, req *criurpc.CriuReq) error {
 		for c, p := range c.cgroupManager.GetPaths() {
 			cgroupRoot := &criurpc.CgroupRoot{
 				Ctrl: proto.String(c),
-				Path: proto.String(p),
+				Path: proto.String(strings.TrimPrefix(p, "/sys/fs/cgroup")),
 			}
 			req.Opts.CgRoot = append(req.Opts.CgRoot, cgroupRoot)
 		}

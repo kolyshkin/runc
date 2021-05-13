@@ -150,6 +150,7 @@ func setManageCgroupsMode(context *cli.Context, options *libcontainer.CriuOpts) 
 	default:
 		fatal(errors.New("Invalid manage-cgroups-mode"))
 	}
+	logrus.Infof("set manage cgroup mode = %d", options.ManageCgroupsMode)
 }
 
 var namespaceMapping = map[specs.LinuxNamespaceType]int{
