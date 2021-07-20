@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -344,11 +345,11 @@ func GetPids(dir string) ([]int, error) {
 func GetAllPids(path string) ([]int, error) {
 	var pids []int
 	// collect pids from all sub-cgroups
-	err := filepath.Walk(path, func(p string, info os.FileInfo, iErr error) error {
+	err := filepath.WalkDir(path, func(p string, d fs.DirEntry, iErr error) error {
 		if iErr != nil {
 			return iErr
 		}
-		if info.IsDir() || info.Name() != CgroupProcesses {
+		if d.IsDir() || d.Name() != CgroupProcesses {
 			return nil
 		}
 		cPids, err := readProcsFile(p)
