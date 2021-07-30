@@ -18,7 +18,7 @@ func TestDevicesSetAllow(t *testing.T) {
 		"devices.list":  "a *:* rwm",
 	})
 
-	helper.CgroupData.config.Resources.Devices = []*devices.Rule{
+	helper.res.Devices = []*devices.Rule{
 		{
 			Type:        devices.CharDevice,
 			Major:       1,
@@ -29,7 +29,7 @@ func TestDevicesSetAllow(t *testing.T) {
 	}
 
 	d := &DevicesGroup{testingSkipFinalCheck: true}
-	if err := d.Set(helper.CgroupPath, helper.CgroupData.config.Resources); err != nil {
+	if err := d.Set(helper.CgroupPath, helper.res); err != nil {
 		t.Fatal(err)
 	}
 

@@ -9,6 +9,7 @@ import (
 
 	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"github.com/opencontainers/runc/libcontainer/cgroups/fscommon"
+	"github.com/opencontainers/runc/libcontainer/configs"
 )
 
 func TestCpuSetShares(t *testing.T) {
@@ -23,9 +24,9 @@ func TestCpuSetShares(t *testing.T) {
 		"cpu.shares": strconv.Itoa(sharesBefore),
 	})
 
-	helper.CgroupData.config.Resources.CpuShares = sharesAfter
+	helper.res.CpuShares = sharesAfter
 	cpu := &CpuGroup{}
-	if err := cpu.Set(helper.CgroupPath, helper.CgroupData.config.Resources); err != nil {
+	if err := cpu.Set(helper.CgroupPath, helper.res); err != nil {
 		t.Fatal(err)
 	}
 
@@ -59,12 +60,12 @@ func TestCpuSetBandWidth(t *testing.T) {
 		"cpu.rt_period_us":  strconv.Itoa(rtPeriodBefore),
 	})
 
-	helper.CgroupData.config.Resources.CpuQuota = quotaAfter
-	helper.CgroupData.config.Resources.CpuPeriod = periodAfter
-	helper.CgroupData.config.Resources.CpuRtRuntime = rtRuntimeAfter
-	helper.CgroupData.config.Resources.CpuRtPeriod = rtPeriodAfter
+	helper.res.CpuQuota = quotaAfter
+	helper.res.CpuPeriod = periodAfter
+	helper.res.CpuRtRuntime = rtRuntimeAfter
+	helper.res.CpuRtPeriod = rtPeriodAfter
 	cpu := &CpuGroup{}
-	if err := cpu.Set(helper.CgroupPath, helper.CgroupData.config.Resources); err != nil {
+	if err := cpu.Set(helper.CgroupPath, helper.res); err != nil {
 		t.Fatal(err)
 	}
 
@@ -176,12 +177,18 @@ func TestCpuSetRtSchedAtApply(t *testing.T) {
 		"cpu.rt_period_us":  strconv.Itoa(rtPeriodBefore),
 	})
 
-	helper.CgroupData.config.Resources.CpuRtRuntime = rtRuntimeAfter
-	helper.CgroupData.config.Resources.CpuRtPeriod = rtPeriodAfter
+	helper.res.CpuRtRuntime = rtRuntimeAfter
+	helper.res.CpuRtPeriod = rtPeriodAfter
 	cpu := &CpuGroup{}
 
-	helper.CgroupData.pid = 1234
-	if err := cpu.Apply(helper.CgroupPath, helper.CgroupData); err != nil {
+	data := &cgroupData{
+		pid: 1234,
+		config: &configs.Cgroup{
+			Resources: helper.res,
+		},
+	}
+
+	if err := cpu.Apply(helper.CgroupPath, data); err != nil {
 		t.Fatal(err)
 	}
 

@@ -22,9 +22,9 @@ func TestPidsSetMax(t *testing.T) {
 		"pids.max": "max",
 	})
 
-	helper.CgroupData.config.Resources.PidsLimit = maxLimited
+	helper.res.PidsLimit = maxLimited
 	pids := &PidsGroup{}
-	if err := pids.Set(helper.CgroupPath, helper.CgroupData.config.Resources); err != nil {
+	if err := pids.Set(helper.CgroupPath, helper.res); err != nil {
 		t.Fatal(err)
 	}
 
@@ -44,9 +44,9 @@ func TestPidsSetUnlimited(t *testing.T) {
 		"pids.max": strconv.Itoa(maxLimited),
 	})
 
-	helper.CgroupData.config.Resources.PidsLimit = maxUnlimited
+	helper.res.PidsLimit = maxUnlimited
 	pids := &PidsGroup{}
-	if err := pids.Set(helper.CgroupPath, helper.CgroupData.config.Resources); err != nil {
+	if err := pids.Set(helper.CgroupPath, helper.res); err != nil {
 		t.Fatal(err)
 	}
 

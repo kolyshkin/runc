@@ -54,10 +54,10 @@ func TestMemorySetMemory(t *testing.T) {
 		"memory.soft_limit_in_bytes": strconv.Itoa(reservationBefore),
 	})
 
-	helper.CgroupData.config.Resources.Memory = memoryAfter
-	helper.CgroupData.config.Resources.MemoryReservation = reservationAfter
+	helper.res.Memory = memoryAfter
+	helper.res.MemoryReservation = reservationAfter
 	memory := &MemoryGroup{}
-	if err := memory.Set(helper.CgroupPath, helper.CgroupData.config.Resources); err != nil {
+	if err := memory.Set(helper.CgroupPath, helper.res); err != nil {
 		t.Fatal(err)
 	}
 
@@ -90,9 +90,9 @@ func TestMemorySetMemoryswap(t *testing.T) {
 		"memory.memsw.limit_in_bytes": strconv.Itoa(memoryswapBefore),
 	})
 
-	helper.CgroupData.config.Resources.MemorySwap = memoryswapAfter
+	helper.res.MemorySwap = memoryswapAfter
 	memory := &MemoryGroup{}
-	if err := memory.Set(helper.CgroupPath, helper.CgroupData.config.Resources); err != nil {
+	if err := memory.Set(helper.CgroupPath, helper.res); err != nil {
 		t.Fatal(err)
 	}
 
@@ -125,10 +125,10 @@ func TestMemorySetMemoryLargerThanSwap(t *testing.T) {
 		"memory.failcnt":            "0",
 	})
 
-	helper.CgroupData.config.Resources.Memory = memoryAfter
-	helper.CgroupData.config.Resources.MemorySwap = memoryswapAfter
+	helper.res.Memory = memoryAfter
+	helper.res.MemorySwap = memoryswapAfter
 	memory := &MemoryGroup{}
-	if err := memory.Set(helper.CgroupPath, helper.CgroupData.config.Resources); err != nil {
+	if err := memory.Set(helper.CgroupPath, helper.res); err != nil {
 		t.Fatal(err)
 	}
 
@@ -164,10 +164,10 @@ func TestMemorySetSwapSmallerThanMemory(t *testing.T) {
 		"memory.memsw.limit_in_bytes": strconv.Itoa(memoryswapBefore),
 	})
 
-	helper.CgroupData.config.Resources.Memory = memoryAfter
-	helper.CgroupData.config.Resources.MemorySwap = memoryswapAfter
+	helper.res.Memory = memoryAfter
+	helper.res.MemorySwap = memoryswapAfter
 	memory := &MemoryGroup{}
-	if err := memory.Set(helper.CgroupPath, helper.CgroupData.config.Resources); err != nil {
+	if err := memory.Set(helper.CgroupPath, helper.res); err != nil {
 		t.Fatal(err)
 	}
 
@@ -198,9 +198,9 @@ func TestMemorySetMemorySwappinessDefault(t *testing.T) {
 		"memory.swappiness": strconv.Itoa(swappinessBefore),
 	})
 
-	helper.CgroupData.config.Resources.MemorySwappiness = &swappinessAfter
+	helper.res.MemorySwappiness = &swappinessAfter
 	memory := &MemoryGroup{}
-	if err := memory.Set(helper.CgroupPath, helper.CgroupData.config.Resources); err != nil {
+	if err := memory.Set(helper.CgroupPath, helper.res); err != nil {
 		t.Fatal(err)
 	}
 
@@ -408,7 +408,7 @@ func TestMemorySetOomControl(t *testing.T) {
 	})
 
 	memory := &MemoryGroup{}
-	if err := memory.Set(helper.CgroupPath, helper.CgroupData.config.Resources); err != nil {
+	if err := memory.Set(helper.CgroupPath, helper.res); err != nil {
 		t.Fatal(err)
 	}
 

@@ -21,8 +21,7 @@ func init() {
 }
 
 type cgroupTestUtil struct {
-	// cgroup data to use in tests.
-	CgroupData *cgroupData
+	res *configs.Resources
 
 	// Path to the mock cgroup directory.
 	CgroupPath string
@@ -32,18 +31,13 @@ type cgroupTestUtil struct {
 
 // Creates a new test util for the specified subsystem
 func NewCgroupTestUtil(subsystem string, t *testing.T) *cgroupTestUtil {
-	d := &cgroupData{
-		config: &configs.Cgroup{
-			Resources: &configs.Resources{},
-		},
-		root: t.TempDir(),
-	}
-	testCgroupPath := filepath.Join(d.root, subsystem)
+	root := t.TempDir()
+	testCgroupPath := filepath.Join(root, subsystem)
 	// Ensure the full mock cgroup path exists.
 	if err := os.MkdirAll(testCgroupPath, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	return &cgroupTestUtil{CgroupData: d, CgroupPath: testCgroupPath, t: t}
+	return &cgroupTestUtil{res: &configs.Resources{}, CgroupPath: testCgroupPath, t: t}
 }
 
 // Write the specified contents on the mock of the specified cgroup files.

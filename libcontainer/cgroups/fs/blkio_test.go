@@ -187,9 +187,9 @@ func TestBlkioSetWeight(t *testing.T) {
 			weightFilename: strconv.Itoa(weightBefore),
 		})
 		// Apply new configuration
-		helper.CgroupData.config.Resources.BlkioWeight = weightAfter
+		helper.res.BlkioWeight = weightAfter
 		blkio := &BlkioGroup{}
-		if err := blkio.Set(helper.CgroupPath, helper.CgroupData.config.Resources); err != nil {
+		if err := blkio.Set(helper.CgroupPath, helper.res); err != nil {
 			t.Fatal(err)
 		}
 		// Verify results
@@ -227,9 +227,9 @@ func TestBlkioSetWeightDevice(t *testing.T) {
 		// Apply new configuration
 		wd := configs.NewWeightDevice(8, 0, 500, 0)
 		weightDeviceAfter := wd.WeightString()
-		helper.CgroupData.config.Resources.BlkioWeightDevice = []*configs.WeightDevice{wd}
+		helper.res.BlkioWeightDevice = []*configs.WeightDevice{wd}
 		blkio := &BlkioGroup{}
-		if err := blkio.Set(helper.CgroupPath, helper.CgroupData.config.Resources); err != nil {
+		if err := blkio.Set(helper.CgroupPath, helper.res); err != nil {
 			t.Fatal(err)
 		}
 		// Verify results
@@ -271,8 +271,8 @@ func TestBlkioSetMultipleWeightDevice(t *testing.T) {
 		blkio.weightDeviceFilename: weightDeviceBefore,
 	})
 
-	helper.CgroupData.config.Resources.BlkioWeightDevice = []*configs.WeightDevice{wd1, wd2}
-	if err := blkio.Set(helper.CgroupPath, helper.CgroupData.config.Resources); err != nil {
+	helper.res.BlkioWeightDevice = []*configs.WeightDevice{wd1, wd2}
+	if err := blkio.Set(helper.CgroupPath, helper.res); err != nil {
 		t.Fatal(err)
 	}
 
@@ -749,9 +749,9 @@ func TestBlkioSetThrottleReadBpsDevice(t *testing.T) {
 		"blkio.throttle.read_bps_device": throttleBefore,
 	})
 
-	helper.CgroupData.config.Resources.BlkioThrottleReadBpsDevice = []*configs.ThrottleDevice{td}
+	helper.res.BlkioThrottleReadBpsDevice = []*configs.ThrottleDevice{td}
 	blkio := &BlkioGroup{}
-	if err := blkio.Set(helper.CgroupPath, helper.CgroupData.config.Resources); err != nil {
+	if err := blkio.Set(helper.CgroupPath, helper.res); err != nil {
 		t.Fatal(err)
 	}
 
@@ -778,9 +778,9 @@ func TestBlkioSetThrottleWriteBpsDevice(t *testing.T) {
 		"blkio.throttle.write_bps_device": throttleBefore,
 	})
 
-	helper.CgroupData.config.Resources.BlkioThrottleWriteBpsDevice = []*configs.ThrottleDevice{td}
+	helper.res.BlkioThrottleWriteBpsDevice = []*configs.ThrottleDevice{td}
 	blkio := &BlkioGroup{}
-	if err := blkio.Set(helper.CgroupPath, helper.CgroupData.config.Resources); err != nil {
+	if err := blkio.Set(helper.CgroupPath, helper.res); err != nil {
 		t.Fatal(err)
 	}
 
@@ -807,9 +807,9 @@ func TestBlkioSetThrottleReadIOpsDevice(t *testing.T) {
 		"blkio.throttle.read_iops_device": throttleBefore,
 	})
 
-	helper.CgroupData.config.Resources.BlkioThrottleReadIOPSDevice = []*configs.ThrottleDevice{td}
+	helper.res.BlkioThrottleReadIOPSDevice = []*configs.ThrottleDevice{td}
 	blkio := &BlkioGroup{}
-	if err := blkio.Set(helper.CgroupPath, helper.CgroupData.config.Resources); err != nil {
+	if err := blkio.Set(helper.CgroupPath, helper.res); err != nil {
 		t.Fatal(err)
 	}
 
@@ -836,9 +836,9 @@ func TestBlkioSetThrottleWriteIOpsDevice(t *testing.T) {
 		"blkio.throttle.write_iops_device": throttleBefore,
 	})
 
-	helper.CgroupData.config.Resources.BlkioThrottleWriteIOPSDevice = []*configs.ThrottleDevice{td}
+	helper.res.BlkioThrottleWriteIOPSDevice = []*configs.ThrottleDevice{td}
 	blkio := &BlkioGroup{}
-	if err := blkio.Set(helper.CgroupPath, helper.CgroupData.config.Resources); err != nil {
+	if err := blkio.Set(helper.CgroupPath, helper.res); err != nil {
 		t.Fatal(err)
 	}
 

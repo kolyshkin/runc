@@ -16,9 +16,9 @@ func TestFreezerSetState(t *testing.T) {
 		"freezer.state": string(configs.Frozen),
 	})
 
-	helper.CgroupData.config.Resources.Freezer = configs.Thawed
+	helper.res.Freezer = configs.Thawed
 	freezer := &FreezerGroup{}
-	if err := freezer.Set(helper.CgroupPath, helper.CgroupData.config.Resources); err != nil {
+	if err := freezer.Set(helper.CgroupPath, helper.res); err != nil {
 		t.Fatal(err)
 	}
 
@@ -38,9 +38,9 @@ func TestFreezerSetInvalidState(t *testing.T) {
 		invalidArg configs.FreezerState = "Invalid"
 	)
 
-	helper.CgroupData.config.Resources.Freezer = invalidArg
+	helper.res.Freezer = invalidArg
 	freezer := &FreezerGroup{}
-	if err := freezer.Set(helper.CgroupPath, helper.CgroupData.config.Resources); err == nil {
+	if err := freezer.Set(helper.CgroupPath, helper.res); err == nil {
 		t.Fatal("Failed to return invalid argument error")
 	}
 }
