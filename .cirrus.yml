@@ -29,6 +29,7 @@ task:
     memory: 32G
 
   host_info_script: |
+    false
     uname -a
     echo "-----"
     cat /etc/os-release
@@ -85,6 +86,7 @@ task:
     memory: 8G
 
   install_dependencies_script: |
+    false
     case $DISTRO in
     centos-7)
       (cd /etc/yum.repos.d && curl -O https://copr.fedorainfracloud.org/coprs/adrian/criu-el7/repo/epel-7/adrian-criu-el7-epel-7.repo)
@@ -96,7 +98,11 @@ task:
       yum config-manager --set-enabled powertools # for glibc-static
       ;;
     esac
-    yum install -y -q gcc git iptables jq glibc-static libseccomp-devel make criu
+    # Work around dnf mirror failures by retrying a few times.
+    for i in $(seq 0 2); do
+      sleep $i
+      yum install -y -q gcc git iptables jq glibc-static libseccomp-devel make criu && break
+    done
     # install Go
     curl -fsSL "https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz" | tar Cxz /usr/local
     # install bats
