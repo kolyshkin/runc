@@ -10,7 +10,9 @@ function teardown() {
 	teardown_bundle
 }
 
+# shellcheck disable=SC2030 # (see https://github.com/koalaman/shellcheck/issues/2431)
 @test "events --stats" {
+	local status
 	# XXX: currently cgroups require root containers.
 	requires root
 	init_cgroup_paths
@@ -38,7 +40,9 @@ function test_events() {
 	fi
 
 	runc run -d --console-socket "$CONSOLE_SOCKET" test_busybox
+	# shellcheck disable=SC2031 # (see https://github.com/koalaman/shellcheck/issues/2431)
 	[ "$status" -eq 0 ]
+
 
 	# Spawn two subshels:
 	# 1. Event logger that sends stats events to events.log.
