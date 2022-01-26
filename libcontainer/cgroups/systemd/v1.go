@@ -180,10 +180,14 @@ func (m *legacyManager) Apply(pid int) error {
 		// If we create a slice, the parent is defined via a Wants=.
 		properties = append(properties, systemdDbus.PropWants(slice))
 	} else {
-		// Otherwise it's a scope, which we put into a Slice=.
-		properties = append(properties, systemdDbus.PropSlice(slice))
-		// Assume scopes always support delegation (supported since systemd v218).
-		properties = append(properties, newProp("Delegate", true))
+		// Otherwise it's a scope,...
+		properties = append(properties,
+			// ... which we put into a Slice=.
+			systemdDbus.PropSlice(slice),
+			// Assume scopes always support delegation
+			// (supported since systemd v218).
+			newProp("Delegate", true),
+		)
 	}
 
 	// only add pid if its valid, -1 is used w/ general slice creation.
@@ -198,11 +202,10 @@ func (m *legacyManager) Apply(pid int) error {
 		newProp("CPUAccounting", true),
 		newProp("BlockIOAccounting", true),
 		newProp("TasksAccounting", true),
+		// Assume DefaultDependencies= will always work
+		// (the check for it was previously broken).
+		newProp("DefaultDependencies", false),
 	)
-
-	// Assume DefaultDependencies= will always work (the check for it was previously broken.)
-	properties = append(properties,
-		newProp("DefaultDependencies", false))
 
 	properties = append(properties, c.SystemdProps...)
 
