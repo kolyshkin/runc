@@ -62,8 +62,10 @@ func main() {
 	if gitCommit != "" {
 		v = append(v, "commit: "+gitCommit)
 	}
-	v = append(v, "spec: "+specs.Version)
-	v = append(v, "go: "+runtime.Version())
+	v = append(v,
+		"spec: "+specs.Version,
+		"go: "+runtime.Version(),
+	)
 
 	major, minor, micro := seccomp.Version()
 	if major+minor+micro > 0 {
