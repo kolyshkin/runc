@@ -81,24 +81,19 @@ func (p *program) init() {
 		u32 major
 		u32 minor
 	*/
-	// R2 <- type (lower 16 bit of u32 access_type at R1[0])
 	p.insts = append(p.insts,
+		// R2 <- type (lower 16 bit of u32 access_type at R1[0])
 		asm.LoadMem(asm.R2, asm.R1, 0, asm.Word),
-		asm.And.Imm32(asm.R2, 0xFFFF))
-
-	// R3 <- access (upper 16 bit of u32 access_type at R1[0])
-	p.insts = append(p.insts,
+		asm.And.Imm32(asm.R2, 0xFFFF),
+		// R3 <- access (upper 16 bit of u32 access_type at R1[0])
 		asm.LoadMem(asm.R3, asm.R1, 0, asm.Word),
 		// RSh: bitwise shift right
-		asm.RSh.Imm32(asm.R3, 16))
-
-	// R4 <- major (u32 major at R1[4])
-	p.insts = append(p.insts,
-		asm.LoadMem(asm.R4, asm.R1, 4, asm.Word))
-
-	// R5 <- minor (u32 minor at R1[8])
-	p.insts = append(p.insts,
-		asm.LoadMem(asm.R5, asm.R1, 8, asm.Word))
+		asm.RSh.Imm32(asm.R3, 16),
+		// R4 <- major (u32 major at R1[4])
+		asm.LoadMem(asm.R4, asm.R1, 4, asm.Word),
+		// R5 <- minor (u32 minor at R1[8])
+		asm.LoadMem(asm.R5, asm.R1, 8, asm.Word),
+	)
 }
 
 // appendRule rule converts an OCI rule to the relevant eBPF block and adds it
