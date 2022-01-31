@@ -25,9 +25,8 @@ To run a new instance of a container:
 
 	# runc run [ -b bundle ] container-id
 
-Where _container-id_ is your name for the instance of the container that you
-are starting. The name you provide for the container instance must be unique on
-your host.
+Where _container-id_ is a name for the new instance of the container.
+The name must be unique on the host.
 
 Providing the bundle directory using **-b** is optional. The default
 value for _bundle_ is the current directory.
