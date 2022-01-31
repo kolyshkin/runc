@@ -41,10 +41,6 @@ command in a new hello-world container named container1:
     sed -i 's;"sh";"/hello";' ` + specConfig + `
     runc run container1
 
-In the run command above, "container1" is the name for the instance of the
-container that you are starting. The name you provide for the container instance
-must be unique on your host.
-
 An alternative for generating a customized spec config is to use "oci-runtime-tool", the
 sub-command "oci-runtime-tool generate" has lots of options that can be used to do any
 customizations as you want, see runtime-tools (https://github.com/opencontainers/runtime-tools)
