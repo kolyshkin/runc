@@ -19,13 +19,12 @@ var execCommand = cli.Command{
 	Usage: "execute new process inside the container",
 	ArgsUsage: `<container-id> <command> [command options]  || -p process.json <container-id>
 
-Where "<container-id>" is the name for the instance of the container and
+Where "<container-id>" is the name for the running instance of the container, and
 "<command>" is the command to be executed in the container.
-"<command>" can't be empty unless a "-p" flag provided.
+The "<command>" can't be empty, unless a "-p" flag is provided.
 
 EXAMPLE:
-For example, if the container is configured to run the linux ps command the
-following will output a list of processes running in the container:
+Output a list of processes running in the container:
 
        # runc exec <container-id> ps`,
 	Flags: []cli.Flag{

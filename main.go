@@ -46,10 +46,11 @@ To start a new instance of a container:
 
     # runc run [ -b bundle ] <container-id>
 
-Where "<container-id>" is your name for the instance of the container that you
-are starting. The name you provide for the container instance must be unique on
-your host. Providing the bundle directory using "-b" is optional. The default
-value for "bundle" is the current directory.`
+Where "<container-id>" is a name of a new instance of the container. The name
+must be unique on the host.
+
+Providing the bundle directory using "-b" is optional; the default is the
+current directory.`
 )
 
 func main() {

@@ -14,9 +14,8 @@ var startCommand = cli.Command{
 	Usage: "executes the user defined process in a created container",
 	ArgsUsage: `<container-id>
 
-Where "<container-id>" is your name for the instance of the container that you
-are starting. The name you provide for the container instance must be unique on
-your host.`,
+Where "<container-id>" is the name for the instance of the container
+previously created by runc-create.`,
 	Description: `The start command executes the user defined process in a created container.`,
 	Action: func(context *cli.Context) error {
 		if err := checkArgs(context, 1, exactArgs); err != nil {

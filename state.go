@@ -14,7 +14,7 @@ var stateCommand = cli.Command{
 	Usage: "output the state of a container",
 	ArgsUsage: `<container-id>
 
-Where "<container-id>" is your name for the instance of the container.`,
+Where "<container-id>" is the name for the instance of the container.`,
 	Description: `The state command outputs current state information for the
 instance of a container.`,
 	Action: func(context *cli.Context) error {
