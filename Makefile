@@ -137,6 +137,11 @@ shellcheck:
 	# TODO: add shellcheck for more sh files
 
 shfmt:
+	$(CONTAINER_ENGINE) run $(CONTAINER_ENGINE_RUN_FLAGS) \
+		--rm -v $(CURDIR):/src -w /src \
+		mvdan/shfmt:v3.4.3 -d -w $$(shfmt -f . | grep -v ^vendor/)
+
+localshfmt:
 	shfmt -d -w $$(shfmt -f . | grep -v ^vendor/)
 
 vendor:
@@ -153,5 +158,5 @@ verify-dependencies: vendor
 	localrelease dbuild lint man runcimage \
 	test localtest unittest localunittest integration localintegration \
 	rootlessintegration localrootlessintegration shell install install-bash \
-	install-man clean cfmt shfmt shellcheck \
+	install-man clean cfmt shfmt localshfmt shellcheck \
 	vendor verify-dependencies
