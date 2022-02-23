@@ -4,11 +4,11 @@ load helpers
 
 function setup() {
 	# runc ps requires cgroups
-	[[ "$ROOTLESS" -ne 0 ]] && requires rootless_cgroup
+	#[[ "$ROOTLESS" -ne 0 ]] && requires rootless_cgroup
 
 	setup_busybox
 
-	set_cgroups_path
+	#set_cgroups_path
 
 	CTID=ps-test
 	runc run -d --console-socket "$CONSOLE_SOCKET" $CTID
