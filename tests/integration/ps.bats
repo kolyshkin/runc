@@ -3,7 +3,18 @@
 load helpers
 
 function setup() {
+	# runc ps requires cgroups
+	[[ "$ROOTLESS" -ne 0 ]] && requires rootless_cgroup
+
 	setup_busybox
+
+	set_cgroups_path
+
+	runc run -d --console-socket "$CONSOLE_SOCKET" test_busybox
+	[ "$status" -eq 0 ]
+
+	# check state
+	testcontainer test_busybox running
 }
 
 function teardown() {
@@ -11,16 +22,6 @@ function teardown() {
 }
 
 @test "ps" {
-	# ps is not supported, it requires cgroups
-	requires root
-
-	# start busybox detached
-	runc run -d --console-socket "$CONSOLE_SOCKET" test_busybox
-	[ "$status" -eq 0 ]
-
-	# check state
-	testcontainer test_busybox running
-
 	runc ps test_busybox
 	[ "$status" -eq 0 ]
 	[[ ${lines[0]} =~ UID\ +PID\ +PPID\ +C\ +STIME\ +TTY\ +TIME\ +CMD+ ]]
@@ -28,32 +29,12 @@ function teardown() {
 }
 
 @test "ps -f json" {
-	# ps is not supported, it requires cgroups
-	requires root
-
-	# start busybox detached
-	runc run -d --console-socket "$CONSOLE_SOCKET" test_busybox
-	[ "$status" -eq 0 ]
-
-	# check state
-	testcontainer test_busybox running
-
 	runc ps -f json test_busybox
 	[ "$status" -eq 0 ]
 	[[ ${lines[0]} =~ [0-9]+ ]]
 }
 
 @test "ps -e -x" {
-	# ps is not supported, it requires cgroups
-	requires root
-
-	# start busybox detached
-	runc run -d --console-socket "$CONSOLE_SOCKET" test_busybox
-	[ "$status" -eq 0 ]
-
-	# check state
-	testcontainer test_busybox running
-
 	runc ps test_busybox -e -x
 	[ "$status" -eq 0 ]
 	[[ ${lines[0]} =~ \ +PID\ +TTY\ +STAT\ +TIME\ +COMMAND+ ]]
@@ -61,17 +42,6 @@ function teardown() {
 }
 
 @test "ps after the container stopped" {
-	# ps requires cgroups
-	[[ "$ROOTLESS" -ne 0 ]] && requires rootless_cgroup
-	set_cgroups_path
-
-	# start busybox detached
-	runc run -d --console-socket "$CONSOLE_SOCKET" test_busybox
-	[ "$status" -eq 0 ]
-
-	# check state
-	testcontainer test_busybox running
-
 	runc ps test_busybox
 	[ "$status" -eq 0 ]
 
