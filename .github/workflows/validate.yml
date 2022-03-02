@@ -13,7 +13,7 @@ jobs:
   lint:
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: install deps
         run: |
           sudo apt -q update
@@ -26,7 +26,7 @@ jobs:
   shfmt:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: vars
       run: |
         echo "VERSION=3.2.4" >> $GITHUB_ENV
@@ -49,7 +49,7 @@ jobs:
   shellcheck:
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: vars
         run: |
           echo 'VERSION=v0.7.2' >> $GITHUB_ENV
@@ -72,7 +72,7 @@ jobs:
   deps:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: cache go mod and $GOCACHE
       uses: actions/cache@v2
       with:
@@ -107,7 +107,7 @@ jobs:
   cross:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       # We have to run this under Docker as Ubuntu (host) does not support all
       # the architectures we want to compile test against, and Dockerfile uses
       # Debian (which does).
@@ -129,7 +129,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         fetch-depth: 0
     - name: install deps
@@ -146,7 +146,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         fetch-depth: 0
     - name: install deps
