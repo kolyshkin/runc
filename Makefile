@@ -137,8 +137,7 @@ shellcheck:
 	# TODO: add shellcheck for more sh files
 
 shfmt:
-	shfmt -ln bats -d -w tests/integration/*.bats
-	shfmt -ln bash -d -w man/*.sh script/* tests/*.sh tests/integration/*.bash
+	shfmt -d -w $$(shfmt -f . | grep -v ^vendor/)
 
 vendor:
 	$(GO) mod tidy
