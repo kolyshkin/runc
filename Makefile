@@ -22,10 +22,19 @@ ifeq ($(shell $(GO) env GOOS),linux)
 endif
 GO_BUILD := $(GO) build -trimpath $(GO_BUILDMODE) $(EXTRA_FLAGS) -tags "$(BUILDTAGS)" \
 	-ldflags "-X main.gitCommit=$(COMMIT) -X main.version=$(VERSION) $(EXTRA_LDFLAGS)"
-GO_BUILD_STATIC := CGO_ENABLED=1 $(GO) build -trimpath $(EXTRA_FLAGS) -tags "$(BUILDTAGS) netgo osusergo" \
+GO_BUILD_STATIC := $(GO) build -trimpath $(EXTRA_FLAGS) -tags "$(BUILDTAGS) netgo osusergo" \
 	-ldflags "-extldflags -static -X main.gitCommit=$(COMMIT) -X main.version=$(VERSION) $(EXTRA_LDFLAGS)"
 
 GPG_KEYID ?= asarai@suse.de
+
+# Some targets need cgo, which is disabled by default when cross compiling.
+# Enable cgo explicitly for those.
+# Both runc and libcontainer/integration need libcontainer/nsenter.
+runc static localunittest: export CGO_ENABLED=1
+# seccompagent needs libseccomp (when seccomp build tag is set).
+ifneq (,$(filter $(BUILDTAGS),seccomp))
+seccompagent: export CGO_ENABLED=1
+endif
 
 .DEFAULT: runc
 
