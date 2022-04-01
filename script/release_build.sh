@@ -58,7 +58,7 @@ function build_project() {
 	# Add -a to go build flags to make sure it links against
 	# the provided libseccomp, not the system one (otherwise
 	# it can reuse cached pkg-config results).
-	local make_args=(COMMIT_NO= EXTRA_FLAGS="-a" EXTRA_LDFLAGS="${ldflags}" static)
+	local make_args=(COMMIT_NO= EXTRA_FLAGS="-a" EXTRA_LDFLAGS="${ldflags}" all)
 
 	# Build natively.
 	make -C "$root" \
