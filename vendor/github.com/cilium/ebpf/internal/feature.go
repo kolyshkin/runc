@@ -42,9 +42,9 @@ type featureTest struct {
 //
 // The return values have the following semantics:
 //
-//   err == ErrNotSupported: the feature is not available
-//   err == nil: the feature is available
-//   err != nil: the test couldn't be executed
+//	err == ErrNotSupported: the feature is not available
+//	err == nil: the feature is available
+//	err != nil: the test couldn't be executed
 type FeatureTestFn func() error
 
 // FeatureTest wraps a function so that it is run at most once.
@@ -54,11 +54,6 @@ type FeatureTestFn func() error
 //
 // Returns an error wrapping ErrNotSupported if the feature is not supported.
 func FeatureTest(name, version string, fn FeatureTestFn) func() error {
-	v, err := NewVersion(version)
-	if err != nil {
-		return func() error { return err }
-	}
-
 	ft := new(featureTest)
 	return func() error {
 		ft.RLock()
@@ -79,6 +74,11 @@ func FeatureTest(name, version string, fn FeatureTestFn) func() error {
 		err := fn()
 		switch {
 		case errors.Is(err, ErrNotSupported):
+			v, err := NewVersion(version)
+			if err != nil {
+				return err
+			}
+
 			ft.result = &UnsupportedFeatureError{
 				MinimumVersion: v,
 				Name:           name,
