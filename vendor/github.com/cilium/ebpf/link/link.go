@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/internal"
-	"github.com/cilium/ebpf/internal/btf"
 	"github.com/cilium/ebpf/internal/sys"
 )
 
@@ -107,11 +107,6 @@ type Info struct {
 	extra   interface{}
 }
 
-// RawLinkInfo contains information on a raw link.
-//
-// Deprecated: use Info instead.
-type RawLinkInfo = Info
-
 type TracingInfo sys.TracingLinkInfo
 type CgroupInfo sys.CgroupLinkInfo
 type NetNsInfo sys.NetNsLinkInfo
@@ -182,40 +177,10 @@ func AttachRawLink(opts RawLinkOptions) (*RawLink, error) {
 	}
 	fd, err := sys.LinkCreate(&attr)
 	if err != nil {
-		return nil, fmt.Errorf("can't create link: %s", err)
+		return nil, fmt.Errorf("create link: %w", err)
 	}
 
 	return &RawLink{fd, ""}, nil
-}
-
-// LoadPinnedRawLink loads a persisted link from a bpffs.
-//
-// Returns an error if the pinned link type doesn't match linkType. Pass
-// UnspecifiedType to disable this behaviour.
-//
-// Deprecated: use LoadPinnedLink instead.
-func LoadPinnedRawLink(fileName string, linkType Type, opts *ebpf.LoadPinOptions) (*RawLink, error) {
-	link, err := loadPinnedRawLink(fileName, opts)
-	if err != nil {
-		return nil, err
-	}
-
-	if linkType == UnspecifiedType {
-		return link, nil
-	}
-
-	info, err := link.Info()
-	if err != nil {
-		link.Close()
-		return nil, fmt.Errorf("get pinned link info: %w", err)
-	}
-
-	if info.Type != linkType {
-		link.Close()
-		return nil, fmt.Errorf("link type %v doesn't match %v", info.Type, linkType)
-	}
-
-	return link, nil
 }
 
 func loadPinnedRawLink(fileName string, opts *ebpf.LoadPinOptions) (*RawLink, error) {
@@ -315,25 +280,24 @@ func (l *RawLink) Info() (*Info, error) {
 	switch info.Type {
 	case CgroupType:
 		extra = &CgroupInfo{}
-	case IterType:
-		// not supported
 	case NetNsType:
 		extra = &NetNsInfo{}
-	case RawTracepointType:
-		// not supported
 	case TracingType:
 		extra = &TracingInfo{}
 	case XDPType:
 		extra = &XDPInfo{}
+	case RawTracepointType, IterType,
+		PerfEventType, KprobeMultiType:
+		// Extra metadata not supported.
 	default:
 		return nil, fmt.Errorf("unknown link info type: %d", info.Type)
 	}
 
-	if info.Type != RawTracepointType && info.Type != IterType {
+	if extra != nil {
 		buf := bytes.NewReader(info.Extra[:])
 		err := binary.Read(buf, internal.NativeEndian, extra)
 		if err != nil {
-			return nil, fmt.Errorf("can not read extra link info: %w", err)
+			return nil, fmt.Errorf("cannot read extra link info: %w", err)
 		}
 	}
 
