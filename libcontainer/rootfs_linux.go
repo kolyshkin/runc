@@ -1091,6 +1091,10 @@ func mountPropagate(m *configs.Mount, rootfs string, mountLabel string, mountFd 
 	}); err != nil {
 		return err
 	}
+
+	if len(m.PropagationFlags) == 0 {
+		return nil
+	}
 	// We have to apply mount propagation flags in a separate WithProcfd() call
 	// because the previous call invalidates the passed procfd -- the mount
 	// target needs to be re-opened.
