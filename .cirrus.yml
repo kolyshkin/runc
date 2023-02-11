@@ -10,64 +10,6 @@ task:
   timeout_in: 30m
 
   env:
-    DEBIAN_FRONTEND: noninteractive
-    HOME: /root
-    # yamllint disable rule:key-duplicates
-    matrix:
-      DISTRO: fedora
-
-  name: vagrant DISTRO:$DISTRO
-
-  compute_engine_instance:
-    image_project: cirrus-images
-    image: family/docker-kvm
-    platform: linux
-    nested_virtualization: true
-    # CPU limit: `16 / NTASK`: see https://cirrus-ci.org/faq/#are-there-any-limits
-    cpu: 8
-    # Memory limit: `4GB * NCPU`
-    memory: 32G
-
-  host_info_script: |
-    uname -a
-    echo "-----"
-    cat /etc/os-release
-    echo "-----"
-    cat /proc/cpuinfo
-    echo "-----"
-    df -T
-  install_libvirt_vagrant_script: |
-    apt-get update
-    apt-get install -y libvirt-daemon libvirt-daemon-system vagrant vagrant-libvirt
-    systemctl enable --now libvirtd
-  vagrant_cache:
-    fingerprint_script: uname -s ; cat Vagrantfile.$DISTRO
-    folder: /root/.vagrant.d
-  vagrant_up_script: |
-    ln -sf Vagrantfile.$DISTRO Vagrantfile
-    # Retry if it fails (download.fedoraproject.org returns 404 sometimes)
-    vagrant up --no-tty || vagrant up --no-tty
-    mkdir -p -m 0700 /root/.ssh
-    vagrant ssh-config >> /root/.ssh/config
-  guest_info_script: |
-    ssh default 'sh -exc "uname -a && systemctl --version && df -T && cat /etc/os-release && go version"'
-  check_config_script: |
-    ssh default /vagrant/script/check-config.sh
-  unit_tests_script: |
-    ssh default 'sudo -i make -C /vagrant localunittest'
-  integration_systemd_script: |
-    ssh -tt default "sudo -i make -C /vagrant localintegration RUNC_USE_SYSTEMD=yes"
-  integration_fs_script: |
-    ssh -tt default "sudo -i make -C /vagrant localintegration"
-  integration_systemd_rootless_script: |
-    ssh -tt default "sudo -i make -C /vagrant localrootlessintegration RUNC_USE_SYSTEMD=yes"
-  integration_fs_rootless_script: |
-    ssh -tt default "sudo -i make -C /vagrant localrootlessintegration"
-
-task:
-  timeout_in: 30m
-
-  env:
     HOME: /root
     CIRRUS_WORKING_DIR: /home/runc
     GO_VERSION: "1.19"
@@ -75,8 +17,6 @@ task:
     RPMS: gcc git iptables jq glibc-static libseccomp-devel make criu fuse-sshfs
     # yamllint disable rule:key-duplicates
     matrix:
-      DISTRO: centos-7
-      DISTRO: centos-stream-8
       DISTRO: centos-stream-9
 
   name: ci / $DISTRO
