@@ -2,11 +2,13 @@ package devices
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 	"testing"
 
+	"github.com/mrunalp/fileutils"
 	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"github.com/opencontainers/runc/libcontainer/cgroups/systemd"
 	"github.com/opencontainers/runc/libcontainer/configs"
@@ -66,7 +68,7 @@ func TestPodSkipDevicesUpdate(t *testing.T) {
 
 	// Create a "container" within the "pod" cgroup.
 	// This is not a real container, just a process in the cgroup.
-	cmd := exec.Command("bash", "-c", "while true; do echo > /dev/null; done")
+	cmd := exec.Command("strace", "-oout", "-f", "bash", "-c", "while true; do echo > /dev/null; done")
 	cmd.Env = append(os.Environ(), "LANG=C")
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -108,6 +110,9 @@ func TestPodSkipDevicesUpdate(t *testing.T) {
 	}
 
 	_ = cmd.Wait()
+
+	fmt.Println("=== strace ===")
+	fileutils.CopyFile("out", "/dev/stdout")
 
 	// "Container" stderr should be empty.
 	if stderr.Len() != 0 {

@@ -44,18 +44,6 @@ task:
     centos-stream-9)
       dnf config-manager --set-enabled crb # for glibc-static
       dnf -y install epel-release epel-next-release strace # for fuse-sshfs
-      echo 0===================
-      #find / -xdev -type f -exec grep -F '/bin/basename' {} + || true
-      echo 1===================
-      echo 2===================
-      strace -oout -f bash -c "while true; do echo > /dev/null; done" &
-      pid=$!
-      sleep 1
-      kill $pid
-      kill $pid || true
-      echo 3=================
-      cat out
-      echo 4=================
       ;;
     esac
     # Work around dnf mirror failures by retrying a few times.
