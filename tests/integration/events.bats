@@ -84,11 +84,11 @@ function test_events() {
 	runc run -d --console-socket "$CONSOLE_SOCKET" test_busybox
 	[ "$status" -eq 0 ]
 
-	# spawn two sub processes (shells)
-	# the first sub process is an event logger that sends stats events to events.log
-	# the second sub process exec a memory hog process to cause a oom condition
-	# and waits for an oom event
+	# Spawn two background jobs.
+	# 1. An event logger that sends stats events to events.log.
 	(__runc events test_busybox >events.log) &
+
+	# 2. Exec a memory hog to cause an OOM and wait for an oom event.
 	(
 		retry 10 1 grep -q test_busybox events.log
 		# shellcheck disable=SC2016
@@ -96,7 +96,7 @@ function test_events() {
 		retry 10 1 grep -q oom events.log
 		__runc delete -f test_busybox
 	) &
-	wait # wait for the above sub shells to finish
+	wait # Wait for both jobs to finish.
 
 	grep -q '{"type":"oom","id":"test_busybox"}' events.log
 }
