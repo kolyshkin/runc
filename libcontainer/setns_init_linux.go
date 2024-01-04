@@ -4,6 +4,7 @@ package libcontainer
 
 import (
 	"os"
+	"os/exec"
 	"runtime"
 
 	"github.com/opencontainers/runc/libcontainer/apparmor"
@@ -80,6 +81,14 @@ func (l *linuxSetnsInit) Init() error {
 	if err := apparmor.ApplyProfile(l.config.AppArmorProfile); err != nil {
 		return err
 	}
+
+	// Check for the arg before waiting to make sure it exists and it is
+	// returned as a create time error.
+	name, err := exec.LookPath(l.config.Args[0])
+	if err != nil {
+		return err
+	}
+
 	// Set seccomp as close to execve as possible, so as few syscalls take
 	// place afterward (reducing the amount of syscalls that users need to
 	// enable in their seccomp profiles).
@@ -94,5 +103,5 @@ func (l *linuxSetnsInit) Init() error {
 		return newSystemErrorWithCause(err, "closing log pipe fd")
 	}
 
-	return system.Execv(l.config.Args[0], l.config.Args[0:], os.Environ())
+	return system.Exec(name, l.config.Args[0:], os.Environ())
 }
