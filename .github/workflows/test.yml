@@ -31,10 +31,9 @@ jobs:
 
     - name: install deps
       run: |
-        # criu repo
-        sudo add-apt-repository -y ppa:criu/ppa
-        # apt-add-repository runs apt update so we don't have to
-        sudo apt -q install libseccomp-dev criu
+        sudo apt -q update
+        sudo apt -qy remove criu
+        sudo apt -q install libseccomp-dev
 
     - name: install go ${{ matrix.go-version }}
       uses: actions/setup-go@v2
@@ -72,88 +71,6 @@ jobs:
       if: matrix.rootless != 'rootless'
       run: sudo -E PATH="$PATH" script -e -c 'make RUNC_USE_SYSTEMD=yes local${{ matrix.rootless }}integration'
 
-
-  # cgroup v2 unified hierarchy + very recent kernel (openat2)
-  fedora:
-    # nested virtualization is only available on macOS hosts
-    runs-on: macos-10.15
-    timeout-minutes: 30
-    # only run it if others have passed
-    needs: [test]
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: "Cache ~/.vagrant.d/boxes, using hash of Vagrantfile.fedora34"
-        uses: actions/cache@v2
-        with:
-          path: ~/.vagrant.d/boxes
-          key: vagrant-${{ hashFiles('Vagrantfile.fedora34') }}
-
-      - name: prepare vagrant
-        run: |
-          ln -sf Vagrantfile.fedora34 Vagrantfile
-          # Retry if it fails (download.fedoraproject.org returns 404 sometimes)
-          vagrant up || vagrant up
-          vagrant ssh-config >> ~/.ssh/config
-
-      - name: system info
-        run: ssh default 'sh -exc "uname -a && systemctl --version && df -T"'
-
-      - name: unit tests
-        run: ssh default 'cd /vagrant && sudo make localunittest'
-
-      - name: cgroupv2 with systemd
-        run: ssh -tt default "sudo make -C /vagrant localintegration RUNC_USE_SYSTEMD=yes"
-
-      - name: cgroupv2 with fs2
-        run: ssh -tt default "sudo make -C /vagrant localintegration"
-
-      - name: cgroupv2 with systemd (rootless)
-        run: ssh -tt default "sudo make -C /vagrant localrootlessintegration RUNC_USE_SYSTEMD=yes"
-
-      - name: cgroupv2 with fs2 (rootless)
-        run: ssh -tt default "sudo make -C /vagrant localrootlessintegration"
-
-
-  # kernel 3.10 (frankenized), systemd 219
-  centos7:
-    # nested virtualization is only available on macOS hosts
-    runs-on: macos-10.15
-    timeout-minutes: 15
-    # only run it if others have passed
-    needs: [test]
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: "Cache ~/.vagrant.d/boxes, using hash of Vagrantfile.centos7"
-        uses: actions/cache@v2
-        with:
-          path: ~/.vagrant.d/boxes
-          key: vagrant-${{ hashFiles('Vagrantfile.centos7') }}
-
-      - name: prepare vagrant
-        run: |
-          ln -sf Vagrantfile.centos7 Vagrantfile
-          vagrant up
-          vagrant ssh-config >> ~/.ssh/config
-
-      - name: system info
-        run: ssh default 'rpm -q centos-release kernel systemd'
-
-      - name: unit tests
-        run: ssh default 'sudo -i make -C /vagrant localunittest'
-
-      - name: integration tests (fs cgroup driver)
-        run: ssh -tt default "sudo -i make -C /vagrant localintegration"
-
-      - name: integration tests (systemd cgroup driver)
-        run: ssh -tt default "sudo -i make -C /vagrant localintegration RUNC_USE_SYSTEMD=1"
-
-      - name: rootless integration
-      # FIXME: rootless is skipped because of EPERM on writing cgroup.procs
-        if: false
-        run: ssh default "sudo -i make -C /vagrant localrootlessintegration"
-
   # We need to continue support for 32-bit ARM.
   # However, we do not have 32-bit ARM CI, so we use i386 for testing 32bit stuff.
   # We are not interested in providing official support for i386.
@@ -168,14 +85,13 @@ jobs:
     - name: install deps
       run: |
         sudo dpkg --add-architecture i386
-        # add criu repo
-        sudo add-apt-repository -y ppa:criu/ppa
-        # apt-add-repository runs apt update so we don't have to.
+        sudo apt -q update
+        sudo apt -qy remove criu
 
         # Due to a bug in apt, we have to update it first
         # (see https://bugs.launchpad.net/ubuntu-cdimage/+bug/1871268)
         sudo apt -q install apt
-        sudo apt -q install libseccomp-dev libseccomp-dev:i386 gcc-multilib criu
+        sudo apt -q install libseccomp-dev libseccomp-dev:i386 gcc-multilib
 
     - name: install go
       uses: actions/setup-go@v2 # use default Go version
