@@ -162,11 +162,7 @@ func execProcess(context *cli.Context) (int, error) {
 	if path == "" && len(context.Args()) == 1 {
 		return -1, errors.New("process args cannot be empty")
 	}
-	state, err := container.State()
-	if err != nil {
-		return -1, err
-	}
-	bundle, ok := utils.SearchLabels(state.Config.Labels, "bundle")
+	bundle, ok := utils.SearchLabels(container.Config().Labels, "bundle")
 	if !ok {
 		return -1, errors.New("bundle not found in labels")
 	}
