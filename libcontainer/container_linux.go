@@ -22,6 +22,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/opencontainers/runc/libcontainer/cgroups"
+	cgConfig "github.com/opencontainers/runc/libcontainer/cgroups/configs"
 	"github.com/opencontainers/runc/libcontainer/configs"
 	"github.com/opencontainers/runc/libcontainer/dmz"
 	"github.com/opencontainers/runc/libcontainer/intelrdt"
@@ -419,7 +420,7 @@ func (c *Container) signal(s os.Signal) error {
 		// does nothing until it's thawed. Only thaw the cgroup
 		// for SIGKILL.
 		if paused, _ := c.isPaused(); paused {
-			_ = c.cgroupManager.Freeze(configs.Thawed)
+			_ = c.cgroupManager.Freeze(cgConfig.Thawed)
 		}
 	}
 	return nil
@@ -812,7 +813,7 @@ func (c *Container) Pause() error {
 	}
 	switch status {
 	case Running, Created:
-		if err := c.cgroupManager.Freeze(configs.Frozen); err != nil {
+		if err := c.cgroupManager.Freeze(cgConfig.Frozen); err != nil {
 			return err
 		}
 		return c.state.transition(&pausedState{
@@ -836,7 +837,7 @@ func (c *Container) Resume() error {
 	if status != Paused {
 		return ErrNotPaused
 	}
-	if err := c.cgroupManager.Freeze(configs.Thawed); err != nil {
+	if err := c.cgroupManager.Freeze(cgConfig.Thawed); err != nil {
 		return err
 	}
 	return c.state.transition(&runningState{
@@ -956,7 +957,7 @@ func (c *Container) isPaused() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return state == configs.Frozen, nil
+	return state == cgConfig.Frozen, nil
 }
 
 func (c *Container) currentState() *State {
