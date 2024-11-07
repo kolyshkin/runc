@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"testing"
 
-	cgConfig "github.com/opencontainers/runc/libcontainer/cgroups/configs"
+	cgConfig "github.com/opencontainers/cgroups/configs"
 	"github.com/opencontainers/runc/libcontainer/configs"
 	"github.com/opencontainers/runc/libcontainer/utils"
 	"github.com/opencontainers/runtime-spec/specs-go"

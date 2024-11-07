@@ -9,7 +9,6 @@ toolchain go1.22.4
 
 require (
 	github.com/checkpoint-restore/go-criu/v6 v6.3.0
-	github.com/cilium/ebpf v0.16.0
 	github.com/containerd/console v1.0.4
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/cyphar/filepath-securejoin v0.3.4
@@ -19,6 +18,7 @@ require (
 	github.com/moby/sys/user v0.3.0
 	github.com/moby/sys/userns v0.1.0
 	github.com/mrunalp/fileutils v0.5.1
+	github.com/opencontainers/cgroups v0.1.0
 	github.com/opencontainers/runtime-spec v1.2.0
 	github.com/opencontainers/selinux v1.11.1
 	github.com/seccomp/libseccomp-golang v0.10.0
@@ -31,7 +31,10 @@ require (
 	google.golang.org/protobuf v1.35.1
 )
 
+replace github.com/opencontainers/cgroups => github.com/kolyshkin/opencontainers-cgroups v0.0.0-20241106231823-d6a3611d9359
+
 require (
+	github.com/cilium/ebpf v0.16.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.5 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/vishvananda/netns v0.0.4 // indirect

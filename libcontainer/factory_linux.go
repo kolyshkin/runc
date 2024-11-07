@@ -9,8 +9,8 @@ import (
 	securejoin "github.com/cyphar/filepath-securejoin"
 	"golang.org/x/sys/unix"
 
-	cgConfig "github.com/opencontainers/runc/libcontainer/cgroups/configs"
-	"github.com/opencontainers/runc/libcontainer/cgroups/manager"
+	cgConfig "github.com/opencontainers/cgroups/configs"
+	"github.com/opencontainers/cgroups/manager"
 	"github.com/opencontainers/runc/libcontainer/configs"
 	"github.com/opencontainers/runc/libcontainer/configs/validate"
 	"github.com/opencontainers/runc/libcontainer/intelrdt"

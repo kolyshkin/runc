@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/opencontainers/runc/libcontainer"
-	"github.com/opencontainers/runc/libcontainer/cgroups/systemd"
+	"github.com/opencontainers/cgroups/systemd"
 	"github.com/opencontainers/runc/libcontainer/devices"
 )
 

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	cgConfig "github.com/opencontainers/runc/libcontainer/cgroups/configs"
+	cgConfig "github.com/opencontainers/cgroups/configs"
 	"github.com/opencontainers/runc/libcontainer/configs"
 	"github.com/opencontainers/runc/libcontainer/devices"
 	"github.com/opencontainers/runc/libcontainer/specconv"

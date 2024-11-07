@@ -1,8 +1,8 @@
 package configs
 
-import cg "github.com/opencontainers/runc/libcontainer/cgroups/configs"
+import cg "github.com/opencontainers/cgroups/configs"
 
-// Deprecated: use [github.com/opencontainers/runc/libcontainer/cgroups/configs].
+// Deprecated: use [github.com/opencontainers/cgroups/configs].
 type (
 	Cgroup         = cg.Cgroup
 	Resources      = cg.Resources
@@ -15,14 +15,14 @@ type (
 	IfPrioMap      = cg.IfPrioMap
 )
 
-// Deprecated: use [github.com/opencontainers/runc/libcontainer/cgroups/configs].
+// Deprecated: use [github.com/opencontainers/cgroups/configs].
 const (
 	Undefined = cg.Undefined
 	Frozen    = cg.Frozen
 	Thawed    = cg.Thawed
 )
 
-// Deprecated: use [github.com/opencontainers/runc/libcontainer/cgroups/configs].
+// Deprecated: use [github.com/opencontainers/cgroups/configs].
 var (
 	NewWeightDevice   = cg.NewWeightDevice
 	NewThrottleDevice = cg.NewThrottleDevice

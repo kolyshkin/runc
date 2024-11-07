@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	cgConfig "github.com/opencontainers/runc/libcontainer/cgroups/configs"
+	cgConfig "github.com/opencontainers/cgroups/configs"
 	"github.com/opencontainers/runc/libcontainer/configs"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"golang.org/x/sys/unix"
