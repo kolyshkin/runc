@@ -8,5 +8,6 @@ contributions to our collective success:
  * Rohit Jnagal (@rjnagal)
  * Victor Marmol (@vmarmol)
  * Michael Crosby (@crosbymichael)
+ * Daniel, Dao Quang Minh (@dqminh)
 
 We thank these members for their service to the OCI community.
