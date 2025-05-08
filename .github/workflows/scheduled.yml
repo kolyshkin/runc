@@ -3,6 +3,7 @@ on:
   schedule:
     # Runs at 00:00 UTC every Sunday, Tuesday, Thursday.
     - cron: '0 0 * * 0,2,4'
+  workflow_dispatch: # XXX for test only, remove this line later.
 permissions:
   contents: read
   actions: write
