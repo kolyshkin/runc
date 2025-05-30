@@ -174,17 +174,40 @@ function setup() {
 	runc run -d --console-socket "$CONSOLE_SOCKET" test_dev_weight
 	[ "$status" -eq 0 ]
 
-	# The loop device itself is no longer needed.
-	losetup -d "$dev"
-
 	if [ -v CGROUP_V2 ]; then
 		file="io.bfq.weight"
 	else
 		file="blkio.bfq.weight_device"
 	fi
-	weights=$(get_cgroup_value $file)
-	[[ "$weights" == *"default 333"* ]]
-	[[ "$weights" == *"$major:$minor 444"* ]]
+	weights1=$(get_cgroup_value $file)
+
+	# Check that runc update works.
+        runc update -r - test_dev_weight <<EOF
+{
+  "blockIO": {
+    "weight": 111,
+    "weightDevice": [
+      {
+        "major": $major,
+	"minor": $minor,
+	"weight": 222
+      }
+    ]
+  }
+}
+EOF
+	weights2=$(get_cgroup_value $file)
+
+	# The loop device itself is no longer needed.
+	losetup -d "$dev"
+
+	# Check original values.
+	[[ "$weights1" == *"default 333"* ]]
+	[[ "$weights1" == *"$major:$minor 444"* ]]
+	# Check updated values.
+	[[ "$weights2" == *"default 111"* ]]
+	[[ "$weights2" == *"$major:$minor 222"* ]]
+
 }
 
 @test "runc run (per-device multiple iops via unified)" {

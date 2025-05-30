@@ -892,3 +892,57 @@ EOF
 	runc update test_update --memory 1024
 	wait_for_container 10 1 test_update stopped
 }
+
+@test "update per-device iops values" {
+	[ $EUID -ne 0 ] && requires rootless_cgroup
+
+	runc run -d --console-socket "$CONSOLE_SOCKET" test_update
+	[ "$status" -eq 0 ]
+
+	runc update -r - test_update <<EOF
+{
+  "blockIO": {
+    "throttleReadBpsDevice": [
+      {
+        "major": 1,
+        "minor": 5,
+        "rate": 10485760
+      }
+    ],
+    "throttleWriteBpsDevice": [
+      {
+        "major": 1,
+        "minor": 5,
+        "rate": 10485760
+      }
+    ],
+    "throttleReadIOPSDevice": [
+      {
+        "major": 1,
+        "minor": 5,
+        "rate": 1000
+      }
+    ],
+    "throttleWriteIOPSDevice": [
+      {
+        "major": 1,
+        "minor": 5,
+        "rate": 1000
+      }
+    ]
+  }
+}
+EOF
+	[ "$status" -eq 0 ]
+
+	if [ -v CGROUP_V2 ]; then
+		iops=$(get_cgroup_value "io.max")
+		printf "== io.max --\n%s\n" "$iops"
+	        grep "^1:5 rbps=10485760 wbps=10485760 riops=1000 wiops=1000$" <<<"$iops"
+	else
+		grep "^1:5 10485760$" "$(get_cgroup_path blkio.throttle.read_bps_device)"
+		grep "^1:5 10485760$" "$(get_cgroup_path blkio.throttle.write_bps_device)"
+		grep "^1:5 1000$" "$(get_cgroup_path blkio.throttle.read_iops_device)"
+		grep "^1:5 1000$" "$(get_cgroup_path blkio.throttle.write_iops_device)"
+	fi
+}
