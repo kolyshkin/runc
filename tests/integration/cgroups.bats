@@ -100,7 +100,8 @@ function setup() {
 
 	# teardown: remove "/foo"
 	# shellcheck disable=SC2016
-	runc exec test_cgroups_group sh -uxc 'echo -memory > /sys/fs/cgroup/cgroup.subtree_control; for f in $(cat /sys/fs/cgroup/foo/cgroup.procs); do echo $f > /sys/fs/cgroup/cgroup.procs; done; rmdir /sys/fs/cgroup/foo'
+	runc -0 exec test_cgroups_group sh -uxc \
+		'echo -memory > /sys/fs/cgroup/cgroup.subtree_control; for f in $(cat /sys/fs/cgroup/foo/cgroup.procs); do echo $f > /sys/fs/cgroup/cgroup.procs; done; rmdir /sys/fs/cgroup/foo'
 	runc -0 exec test_cgroups_group test ! -d /sys/fs/cgroup/foo
 	#
 }
@@ -129,7 +130,7 @@ function setup() {
 	if [[ "$status" -eq 0 ]]; then
 		[ "$output" = 'default 750' ]
 	else
-		runc exec test_cgroups_unified sh -c 'cat /sys/fs/cgroup/io.weight'
+		runc -0 exec test_cgroups_unified sh -c 'cat /sys/fs/cgroup/io.weight'
 		[ "$output" = 'default 7475' ]
 	fi
 }
@@ -177,7 +178,7 @@ function setup() {
 	weights1=$(get_cgroup_value $file)
 
 	# Check that runc update works.
-	runc update -r - test_dev_weight <<EOF
+	runc -0 update -r - test_dev_weight <<EOF
 {
   "blockIO": {
     "weight": 111,
@@ -449,7 +450,7 @@ convert_hugetlb_size() {
 	# Resume the container a bit later.
 	(
 		sleep 2
-		runc resume ct1
+		runc -0 resume ct1
 	) &
 
 	# Exec should succeed (once the container is resumed).

@@ -113,7 +113,7 @@ function test_runc_delete_host_pidns() {
 
 	testcontainer test_busybox running
 
-	runc delete --force test_busybox
+	runc -0 delete --force test_busybox
 
 	runc ! state test_busybox
 }
@@ -133,10 +133,13 @@ function test_runc_delete_host_pidns() {
 }
 
 @test "runc delete --force [paused container]" {
+	requires cgroups_freezer
+	[ $EUID -ne 0 ] && requires rootless_cgroup
+
 	runc -0 run -d --console-socket "$CONSOLE_SOCKET" ct1
 	testcontainer ct1 running
 
-	runc pause ct1
+	runc -0 pause ct1
 	runc -0 delete --force ct1
 }
 
@@ -179,7 +182,7 @@ EOF
 		[ -d "${path}" ] || fail "test failed to create memory sub-cgroup ($path not found)"
 	done
 
-	runc delete --force test_busybox
+	runc -0 delete --force test_busybox
 
 	runc ! state test_busybox
 
@@ -221,7 +224,7 @@ EOF
 	[ -d "$CGROUP_V2_PATH"/foo ]
 
 	# force delete test_busybox
-	runc delete --force test_busybox
+	runc -0 delete --force test_busybox
 
 	runc ! state test_busybox
 
@@ -249,7 +252,7 @@ EOF
 	# Expect "unit is not active" exit code.
 	run -3 systemctl status $user "$SD_UNIT_NAME"
 
-	runc delete test-failed-unit
+	runc -0 delete test-failed-unit
 	# Expect "no such unit" exit code.
 	run -4 systemctl status $user "$SD_UNIT_NAME"
 }
