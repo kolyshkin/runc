@@ -18,9 +18,7 @@ function check_debug() {
 }
 
 @test "global --debug" {
-	# run hello-world
-	runc --debug run test_hello
-	[ "$status" -eq 0 ]
+	runc -0 --debug run test_hello
 
 	# check expected debug output was sent to stderr
 	[[ "${output}" == *"level=debug"* ]]
@@ -28,9 +26,7 @@ function check_debug() {
 }
 
 @test "global --debug to --log" {
-	# run hello-world
-	runc --log log.out --debug run test_hello
-	[ "$status" -eq 0 ]
+	runc -0 --log log.out --debug run test_hello
 
 	# check output does not include debug info
 	[[ "${output}" != *"level=debug"* ]]
@@ -43,9 +39,7 @@ function check_debug() {
 }
 
 @test "global --debug to --log --log-format 'text'" {
-	# run hello-world
-	runc --log log.out --log-format "text" --debug run test_hello
-	[ "$status" -eq 0 ]
+	runc -0 --log log.out --log-format "text" --debug run test_hello
 
 	# check output does not include debug info
 	[[ "${output}" != *"level=debug"* ]]
@@ -58,9 +52,7 @@ function check_debug() {
 }
 
 @test "global --debug to --log --log-format 'json'" {
-	# run hello-world
-	runc --log log.out --log-format "json" --debug run test_hello
-	[ "$status" -eq 0 ]
+	runc -0 --log log.out --log-format "json" --debug run test_hello
 
 	# check output does not include debug info
 	[[ "${output}" != *"level=debug"* ]]

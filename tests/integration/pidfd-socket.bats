@@ -17,8 +17,7 @@ function teardown() {
 @test "runc create [ --pidfd-socket ] " {
 	setup_pidfd_kill "SIGTERM"
 
-	runc create --console-socket "$CONSOLE_SOCKET" --pidfd-socket "${PIDFD_SOCKET}" test_pidfd
-	[ "$status" -eq 0 ]
+	runc -0 create --console-socket "$CONSOLE_SOCKET" --pidfd-socket "${PIDFD_SOCKET}" test_pidfd
 	testcontainer test_pidfd created
 
 	pidfd_kill
@@ -28,8 +27,7 @@ function teardown() {
 @test "runc run [ --pidfd-socket ] " {
 	setup_pidfd_kill "SIGKILL"
 
-	runc run -d --console-socket "$CONSOLE_SOCKET" --pidfd-socket "${PIDFD_SOCKET}" test_pidfd
-	[ "$status" -eq 0 ]
+	runc -0 run -d --console-socket "$CONSOLE_SOCKET" --pidfd-socket "${PIDFD_SOCKET}" test_pidfd
 	testcontainer test_pidfd running
 
 	pidfd_kill
@@ -41,19 +39,16 @@ function teardown() {
 
 	set_cgroups_path
 
-	runc run -d --console-socket "$CONSOLE_SOCKET" test_pidfd
-	[ "$status" -eq 0 ]
+	runc -0 run -d --console-socket "$CONSOLE_SOCKET" test_pidfd
 	testcontainer test_pidfd running
 
 	# Use sub-cgroup to ensure that exec process has been killed
 	test_pidfd_cgroup_path=$(get_cgroup_path "pids")
 	mkdir "${test_pidfd_cgroup_path}/exec_pidfd"
-	[ "$status" -eq 0 ]
 
 	setup_pidfd_kill "SIGKILL"
 
 	__runc exec -d --cgroup "pids:exec_pidfd" --pid-file "exec_pid.txt" --pidfd-socket "${PIDFD_SOCKET}" test_pidfd sleep 1d
-	[ "$status" -eq 0 ]
 
 	exec_pid=$(cat exec_pid.txt)
 	exec_pid_in_cgroup=$(cat "${test_pidfd_cgroup_path}/exec_pidfd/cgroup.procs")
@@ -72,19 +67,16 @@ function teardown() {
 
 	set_cgroups_path
 
-	runc run -d --console-socket "$CONSOLE_SOCKET" test_pidfd
-	[ "$status" -eq 0 ]
+	runc -0 run -d --console-socket "$CONSOLE_SOCKET" test_pidfd
 	testcontainer test_pidfd running
 
 	# Use sub-cgroup to ensure that exec process has been killed
 	test_pidfd_cgroup_path=$(get_cgroup_path "pids")
 	mkdir "${test_pidfd_cgroup_path}/exec_pidfd"
-	[ "$status" -eq 0 ]
 
 	setup_pidfd_kill "SIGKILL"
 
 	__runc exec -d --cgroup "exec_pidfd" --pid-file "exec_pid.txt" --pidfd-socket "${PIDFD_SOCKET}" test_pidfd sleep 1d
-	[ "$status" -eq 0 ]
 
 	exec_pid=$(cat exec_pid.txt)
 	exec_pid_in_cgroup=$(cat "${test_pidfd_cgroup_path}/exec_pidfd/cgroup.procs")

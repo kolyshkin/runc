@@ -11,53 +11,35 @@ function teardown() {
 }
 
 @test "state (kill + delete)" {
-	runc state test_busybox
-	[ "$status" -ne 0 ]
+	runc ! state test_busybox
 
-	# run busybox detached
-	runc run -d --console-socket "$CONSOLE_SOCKET" test_busybox
-	[ "$status" -eq 0 ]
+	runc -0 run -d --console-socket "$CONSOLE_SOCKET" test_busybox
 
-	# check state
 	testcontainer test_busybox running
 
-	runc kill test_busybox KILL
-	[ "$status" -eq 0 ]
+	runc -0 kill test_busybox KILL
 	wait_for_container 10 1 test_busybox stopped
 
-	# delete test_busybox
-	runc delete test_busybox
-	[ "$status" -eq 0 ]
+	runc -0 delete test_busybox
 
-	runc state test_busybox
-	[ "$status" -ne 0 ]
+	runc ! state test_busybox
 }
 
 @test "state (pause + resume)" {
 	# XXX: pause and resume require cgroups.
 	requires root
 
-	runc state test_busybox
-	[ "$status" -ne 0 ]
+	runc ! state test_busybox
 
-	# run busybox detached
-	runc run -d --console-socket "$CONSOLE_SOCKET" test_busybox
-	[ "$status" -eq 0 ]
+	runc -0 run -d --console-socket "$CONSOLE_SOCKET" test_busybox
 
-	# check state
 	testcontainer test_busybox running
 
-	# pause busybox
-	runc pause test_busybox
-	[ "$status" -eq 0 ]
+	runc -0 pause test_busybox
 
-	# test state of busybox is paused
 	testcontainer test_busybox paused
 
-	# resume busybox
-	runc resume test_busybox
-	[ "$status" -eq 0 ]
+	runc -0 resume test_busybox
 
-	# test state of busybox is back to running
 	testcontainer test_busybox running
 }
