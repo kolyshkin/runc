@@ -57,6 +57,8 @@ task:
       dnf -y module disable container-tools
       dnf -y copr enable adrian/criu-el8
       dnf -y install criu
+      # Disable pagemap_scan (see https://github.com/checkpoint-restore/criu/issues/2551).
+      echo 'fault 135' >> /etc/criu/default.conf
     esac
 
     # Install Go.
