@@ -27,7 +27,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, ubuntu-24.04-arm]
+        os: [ubuntu-24.04, ubuntu-24.04-arm, ubuntu-26.04, ubuntu-26.04-arm]
         go-version: [1.25.x, 1.26.x]
         libpathrs: ["libpathrs", ""]
         rootless: ["rootless", ""]
@@ -130,7 +130,7 @@ jobs:
 
     - name: Allow userns for runc
       # https://discourse.ubuntu.com/t/ubuntu-24-04-lts-noble-numbat-release-notes/39890#unprivileged-user-namespace-restrictions-15
-      if: startsWith(matrix.os, 'ubuntu-24.04')
+      if: startsWith(matrix.os, 'ubuntu-24.04') || startsWith(matrix.os, 'ubuntu-26.04')
       run: |
         sed "s;^profile runc /usr/sbin/;profile runc-test $PWD/;" < /etc/apparmor.d/runc | sudo apparmor_parser
 
