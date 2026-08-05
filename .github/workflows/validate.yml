@@ -126,6 +126,9 @@ jobs:
           sudo rm -f /usr/bin/shellcheck
           # Add ~/bin to $PATH.
           echo ~/bin >> $GITHUB_PATH
+      - name: add problem matcher
+        # Show shellcheck (tty format) findings as annotations.
+        run: echo "::add-matcher::.github/shellcheck-tty.json"
       - name: run
         run: make shellcheck
       - name: check-config.sh

@@ -1,0 +1,24 @@
+{
+  "problemMatcher": [
+    {
+      "owner": "shellcheck-tty",
+      "pattern": [
+        {
+          "regexp": "^In\\s(.+)\\sline\\s(\\d+):$",
+          "file": 1,
+          "line": 2
+        },
+        {
+          "regexp": ".*"
+        },
+        {
+          "regexp": "SC(\\d+)(\\s\\((error|warning|info|style|note)\\))?:\\s(.+)$",
+          "code": 1,
+          "severity": 3,
+          "message": 4,
+          "loop": true
+        }
+      ]
+    }
+  ]
+}
