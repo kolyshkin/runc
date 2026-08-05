@@ -126,7 +126,6 @@ jobs:
           sudo rm -f /usr/bin/shellcheck
           # Add ~/bin to $PATH.
           echo ~/bin >> $GITHUB_PATH
-      - uses: lumaxis/shellcheck-problem-matchers@v2
       - name: run
         run: make shellcheck
       - name: check-config.sh
