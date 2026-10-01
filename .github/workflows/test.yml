@@ -326,6 +326,18 @@ jobs:
         sudo apt -y install libseccomp-dev libassuan-dev libbtrfs-dev libgpgme-dev libsystemd-dev \
           podman conmon netavark aardvark-dns catatonit
 
+    - name: install CRIU
+      # Needed for podman checkpoint/restore tests.
+      env:
+        PREFIX: https://download.opensuse.org/repositories/devel:/tools:/criu/xUbuntu
+      run: |
+        REPO=${PREFIX}_$(. /etc/os-release && echo $VERSION_ID)
+        curl -fSsLl "$REPO/Release.key" | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/devel_tools_criu.gpg > /dev/null
+        echo "deb $REPO/ /" | sudo tee /etc/apt/sources.list.d/criu.list
+        sudo apt update
+        sudo apt -y install criu
+        criu --version
+
     - name: install libpathrs ${{ env.LIBPATHRS_VERSION }}
       run: |
         sudo -E PATH="$PATH" ./script/build-libpathrs.sh "$LIBPATHRS_VERSION" /usr
