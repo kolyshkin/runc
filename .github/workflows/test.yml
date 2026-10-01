@@ -309,11 +309,79 @@ jobs:
     - name: "Run integration tests (fs driver, rootless)"
       run: ssh -tt lima-default sudo -i make -C /tmp/runc localrootlessintegration
 
+  podman:
+    timeout-minutes: 60
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: install deps
+      # Ubuntu's podman package is only used to get its runtime dependencies
+      # (conmon, netavark, containers-common etc.); podman itself is built
+      # from source below.
+      run: |
+        sudo apt update
+        sudo apt -y install libseccomp-dev libassuan-dev libbtrfs-dev libgpgme-dev libsystemd-dev \
+          podman conmon netavark aardvark-dns catatonit
+
+    - name: install CRIU
+      # Needed for podman checkpoint/restore tests.
+      env:
+        PREFIX: https://download.opensuse.org/repositories/devel:/tools:/criu/xUbuntu
+      run: |
+        REPO=${PREFIX}_$(. /etc/os-release && echo $VERSION_ID)
+        curl -fSsLl "$REPO/Release.key" | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/devel_tools_criu.gpg > /dev/null
+        echo "deb $REPO/ /" | sudo tee /etc/apt/sources.list.d/criu.list
+        sudo apt update
+        sudo apt -y install criu
+        criu --version
+
+    - name: install libpathrs ${{ env.LIBPATHRS_VERSION }}
+      run: |
+        sudo -E PATH="$PATH" ./script/build-libpathrs.sh "$LIBPATHRS_VERSION" /usr
+
+    - name: install go
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      with:
+        go-version: 1.x # Latest stable
+        check-latest: true
+
+    - name: build and install runc
+      # Podman tests expect the runtime to be named "runc", and /usr/bin/runc
+      # is the first location podman looks for it, so replace the one there.
+      run: |
+        make
+        sudo install -m0755 runc /usr/bin/runc
+
+    - name: setup podman test environment
+      run: |
+        # Remote API service interferes with some tests.
+        sudo systemctl disable --now podman.socket
+        # Used by podman run --rootfs tests.
+        echo containers:200000:268435456 | sudo tee -a /etc/subuid /etc/subgid
+
+    - name: checkout podman
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        repository: containers/podman
+        path: podman
+        ref: v5.8.8
+        persist-credentials: false
+
+    - name: build podman
+      run: make -C podman binaries
+
+    - name: run podman tests
+      run: sudo -E PATH="$PATH" ./tests/podman/run-tests.sh ./podman
+
   all-done:
     needs:
     - test
     - cross-i386
     - lima
+    - podman
     runs-on: ubuntu-24.04
     steps:
     - run: echo "All jobs completed"
