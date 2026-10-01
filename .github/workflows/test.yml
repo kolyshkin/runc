@@ -311,7 +311,7 @@ jobs:
 
   podman:
     timeout-minutes: 60
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
@@ -320,23 +320,19 @@ jobs:
     - name: install deps
       # Ubuntu's podman package is only used to get its runtime dependencies
       # (conmon, netavark, containers-common etc.); podman itself is built
-      # from source below.
+      # from source below. CRIU is needed for podman checkpoint/restore tests.
       run: |
         sudo apt update
         sudo apt -y install libseccomp-dev libassuan-dev libbtrfs-dev libgpgme-dev libsystemd-dev \
-          podman conmon netavark aardvark-dns catatonit
-
-    - name: install CRIU
-      # Needed for podman checkpoint/restore tests.
-      env:
-        PREFIX: https://download.opensuse.org/repositories/devel:/tools:/criu/xUbuntu
-      run: |
-        REPO=${PREFIX}_$(. /etc/os-release && echo $VERSION_ID)
-        curl -fSsLl "$REPO/Release.key" | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/devel_tools_criu.gpg > /dev/null
-        echo "deb $REPO/ /" | sudo tee /etc/apt/sources.list.d/criu.list
-        sudo apt update
-        sudo apt -y install criu
+          podman conmon netavark aardvark-dns catatonit criu
         criu --version
+
+    - name: use the original sudo
+      # Ubuntu 26.04 uses sudo-rs by default, which does not support -E
+      # (https://github.com/trifectatechfoundation/sudo-rs/issues/1299).
+      run: |
+        sudo apt -y install sudo
+        sudo update-alternatives --set sudo /usr/bin/sudo.ws
 
     - name: install libpathrs ${{ env.LIBPATHRS_VERSION }}
       run: |
