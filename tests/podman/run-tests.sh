@@ -26,6 +26,12 @@ export OCI_RUNTIME=runc
 export CGROUP_MANAGER=systemd
 export STORAGE_FS=overlay
 export TMPDIR=/var/tmp
+# GHA Ubuntu 26.04 image sets firewall_driver = "iptables" via a
+# containers.conf.d drop-in, while netavark defaults to nftables.
+# Tests that set CONTAINERS_CONF do not read drop-ins, so they end up
+# using a different firewall driver, and network teardown fails.
+# Use the same driver everywhere.
+export NETAVARK_FW=iptables
 
 # Tests to skip (each entry is a part of the test name, regexp).
 SKIP_TESTS=(
@@ -58,6 +64,11 @@ SKIP_TESTS=(
 	'push with --add-compression'
 	'push with authorization'
 	'attempt push w/o dest'
+	# Uses host /bin/ls, which on Ubuntu 26.04 is a symlink to a binary
+	# in another directory, so it can't be found inside a container.
+	# TODO: remove once https://github.com/podman-container-tools/podman/pull/29877
+	# is in the podman version used.
+	'podman run with noexec can.t exec'
 	'using journald for container'
 )
 SKIP_REGEX=$(
