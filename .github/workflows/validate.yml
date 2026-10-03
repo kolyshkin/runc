@@ -377,6 +377,10 @@ jobs:
         annotations: true
 
   all-done-validate:
+    # Jobs that are not applicable to the event (e.g. PR-only jobs on push)
+    # are skipped, which by default skips this job, too. Run it anyway, and
+    # fail if any of the needed jobs has failed or was cancelled.
+    if: ${{ !cancelled() }}
     needs:
       - check-go
       - cfmt
@@ -396,4 +400,14 @@ jobs:
       - zizmor
     runs-on: ubuntu-24.04
     steps:
-    - run: echo "All jobs completed"
+    - env:
+        NEEDS: ${{ toJSON(needs) }}
+      run: |
+        failed=$(jq -r 'to_entries[]
+            | select(.value.result != "success" and .value.result != "skipped")
+            | "::error::Job \(.key) result: \(.value.result)"' <<<"$NEEDS")
+        if [ -n "$failed" ]; then
+          echo "$failed"
+          exit 1
+        fi
+        echo "All jobs completed"
