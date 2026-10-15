@@ -1,0 +1,34 @@
+#!/bin/bash
+# A wrapper for runc, translating the crun-specific global options used by
+# crun's tests into the runc ones, so that the tests can be run against runc.
+#
+# The runc binary is taken from $RUNC.
+
+args=()
+while [ $# -gt 0 ]; do
+	case "$1" in
+	--cgroup-manager)
+		manager="$2"
+		shift 2
+		;;
+	--cgroup-manager=*)
+		manager="${1#*=}"
+		shift
+		;;
+	*)
+		args+=("$1")
+		shift
+		continue
+		;;
+	esac
+	case "$manager" in
+	cgroupfs) ;;
+	systemd) args+=(--systemd-cgroup) ;;
+	*)
+		echo "$0: unsupported cgroup manager: $manager" >&2
+		exit 1
+		;;
+	esac
+done
+
+exec "$RUNC" "${args[@]}"

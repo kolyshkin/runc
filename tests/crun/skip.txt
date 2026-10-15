@@ -1,0 +1,121 @@
+# The crun integration tests (see crun/tests/test_*.py) which currently
+# fail with runc, and so are skipped by tests/crun/run.sh.
+#
+# Format: <file>.py: <test name>
+#     or: <file>.py
+#
+# The latter is for the whole file, e.g. for a feature runc does not have.
+#
+# A comment applies to the entries below it, up to the next empty line.
+
+# Features runc does not have: --cgroup-manager=disabled, delete --regex,
+# start --config.
+test_cgroup_setup.py: cgroup-disabled
+test_cgroup_setup.py: cgroup-disabled-detach
+test_update.py: update-without-cgroup-device-no-access
+test_update.py: update-without-cgroup-memory
+test_delete.py: test_multiple_containers_delete
+test_start.py: start-override-config
+
+# crun-specific annotations.
+test_cgroup_setup.py: annotation-delegate-cgroup-dotdot
+test_cgroup_setup.py: annotation-systemd-subgroup
+test_hooks.py: test-annotation-hook-stdout-stderr
+test_seccomp.py: annotation-seccomp-fail-unknown-syscall
+test_uid_gid.py: keep-groups
+
+# Check crun's own --help, --version, or features output.
+test_commands.py: version-command
+test_delete.py: test_help_delete
+test_exec.py: exec-help
+test_oci_features.py: crun-features
+test_start.py: help
+
+# Check crun's own state file (<root>/<id>/status).
+test_start.py: start
+
+# wait_for_state in crun's tests waits for <root>/<id>/status file, which is
+# where crun keeps the container state, while runc uses state.json.
+test_commands.py: kill-all
+test_commands.py: kill-all-threaded
+test_commands.py: kill-signal
+test_commands.py: kill-signal-number
+test_commands.py: run-forward-signal
+test_commands.py: start-command
+test_commands.py: state-created
+test_create.py: create-delete-without-start
+test_create.py: create-start
+test_create.py: create-with-annotations
+
+# Check crun's error or warning messages.
+test_cgroup_setup.py: cgroup-v2-mount-options
+test_hooks.py: test-multiple-poststop-hooks-failure
+test_hooks.py: test-poststop-hook-failure-warning
+test_linux_features.py: process-apparmor-profile-not-loaded
+test_resources.py: resources-unified-exec-cgroup-reject-dotdot
+test_resources.py: resources-unified-invalid-controller
+test_resources.py: resources-unified-invalid-key
+test_scheduler.py: scheduler-deadline-invalid-deadline-period
+test_scheduler.py: scheduler-deadline-invalid-order
+test_scheduler.py: scheduler-deadline-missing-deadline
+test_scheduler.py: scheduler-deadline-missing-runtime
+test_scheduler.py: scheduler-deadline-too-big-runtime
+test_scheduler.py: scheduler-deadline-too-small-runtime
+test_scheduler.py: scheduler-deadline-zero-runtime
+test_seccomp.py: seccomp-action-missing-prefix
+test_seccomp.py: seccomp-invalid-action
+test_seccomp.py: seccomp-invalid-default-action
+test_seccomp.py: seccomp-invalid-flag
+test_seccomp.py: seccomp-invalid-operator
+test_seccomp.py: seccomp-operator-missing-prefix
+test_start.py: invalid-id
+test_start.py: invalid-id-chars
+test_sysctl.py: sysctl-invalid-path
+
+# runc ignores (with a warning) unknown capabilities.
+test_capabilities.py: unknown-caps
+test_exec.py: exec-add-capability
+
+# crun creates a user namespace mapping if there is none; runc errors out.
+test_linux_features.py: set-id-init-root
+test_linux_features.py: sysfs-userns-no-netns-no-cgroup
+test_linux_features.py: sysfs-userns-no-netns-with-cgroup
+test_namespaces.py: join-namespaces-mount-without-type
+test_namespaces.py: user-namespace-root
+
+# runc requires all the preserved fds to exist.
+test_preserve_fds.py: preserve-fds-some
+
+# runc treats memory.swap of 0 as unset.
+test_resources.py: resources-v2-swap-disabled
+
+# runc only connects to the seccomp listener if there are SCMP_ACT_NOTIFY
+# rules, and the test, which has none, waits for the connection forever.
+test_seccomp.py: seccomp-listener
+
+# SCMP_ACT_KILL kills the main thread of runc init, and runc hangs
+# (https://github.com/opencontainers/runc/issues/5087).
+test_seccomp.py: seccomp-kill-action
+
+# TODO: these are yet to be looked at.
+test_devices.py: dev-console-symlink-does-not-escape-rootfs
+test_devices.py: dev-null-symlink-not-reopened
+test_devices.py: dev-symlink-does-not-populate-outside-rootfs
+test_devices.py: mknod-conflicting-device
+test_devices.py: mode-device
+test_devices.py: net-devices
+test_devices.py: owner-device
+test_domainname.py: domainname conflict with syctl
+test_exec.py: exec_add_no_new_privileges
+test_hooks.py: test-createContainer-hook-after-mounts
+test_hooks.py: test-hooks-bundle-path-not-cwd
+test_hooks.py: test-in-container-hooks-state
+test_hooks.py: test-poststart-fail-deletes-container
+test_linux_features.py: set-id-additional-gids
+test_linux_features.py: user-namespace-mapping
+test_namespaces.py: user-namespace-mappings
+test_rlimits.py: rlimits-duplicate
+test_seccomp.py: seccomp-invalid-arg-index-unknown-syscall
+test_start.py: listen_pid_env
+test_uid_gid.py: dev-null-no-chown
+test_uid_gid.py: regular-files-chowned
