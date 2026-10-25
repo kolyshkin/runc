@@ -22,8 +22,35 @@ import (
 //
 // Returns the prepared environment.
 func prepareEnv(env []string, uid int) ([]string, error) {
-	homeIsSet := false
+	out, homeIsSet, err := dedupEnv(env)
+	if err != nil {
+		return nil, err
+	}
+	if path, ok := envValue(out, "PATH"); ok {
+		// Needs to be set as it is used for binary lookup.
+		if err := os.Setenv("PATH", path); err != nil {
+			return nil, err
+		}
+	}
 
+	// If HOME is not found in env, get it from container's /etc/passwd and add.
+	if !homeIsSet {
+		home, err := getUserHome(uid)
+		if err != nil {
+			// For backward compatibility, don't return an error, but merely log it.
+			logrus.WithError(err).Debugf("HOME not set in process.env, and getting UID %d homedir failed", uid)
+		}
+
+		out = append(out, "HOME="+home)
+	}
+
+	return out, nil
+}
+
+// dedupEnv is the part of [prepareEnv] which validates the variables and
+// removes duplicates, as well as empty HOME. It also returns whether HOME
+// is set.
+func dedupEnv(env []string) (_ []string, homeIsSet bool, _ error) {
 	// Deduplication code based on dedupEnv from Go 1.22 os/exec.
 
 	// Construct the output in reverse order, to preserve the
@@ -34,10 +61,10 @@ func prepareEnv(env []string, uid int) ([]string, error) {
 		kv := env[n-1]
 		i := strings.IndexByte(kv, '=')
 		if i == -1 {
-			return nil, errors.New("invalid environment variable: missing '='")
+			return nil, false, errors.New("invalid environment variable: missing '='")
 		}
 		if i == 0 {
-			return nil, errors.New("invalid environment variable: name cannot be empty")
+			return nil, false, errors.New("invalid environment variable: name cannot be empty")
 		}
 		key := kv[:i]
 		val := kv[i+1:]
@@ -46,13 +73,7 @@ func prepareEnv(env []string, uid int) ([]string, error) {
 		}
 		saw[key] = true
 		if strings.IndexByte(kv, 0) >= 0 {
-			return nil, fmt.Errorf("invalid environment variable %q: contains nul byte (\\x00)", key)
-		}
-		if key == "PATH" {
-			// Needs to be set as it is used for binary lookup.
-			if err := os.Setenv("PATH", val); err != nil {
-				return nil, err
-			}
+			return nil, false, fmt.Errorf("invalid environment variable %q: contains nul byte (\\x00)", key)
 		}
 		if key == "HOME" {
 			if val != "" {
@@ -67,18 +88,17 @@ func prepareEnv(env []string, uid int) ([]string, error) {
 	// Restore the original order.
 	slices.Reverse(out)
 
-	// If HOME is not found in env, get it from container's /etc/passwd and add.
-	if !homeIsSet {
-		home, err := getUserHome(uid)
-		if err != nil {
-			// For backward compatibility, don't return an error, but merely log it.
-			logrus.WithError(err).Debugf("HOME not set in process.env, and getting UID %d homedir failed", uid)
+	return out, homeIsSet, nil
+}
+
+// envValue returns the value of the variable key from env.
+func envValue(env []string, key string) (string, bool) {
+	for _, kv := range env {
+		if k, v, ok := strings.Cut(kv, "="); ok && k == key {
+			return v, true
 		}
-
-		out = append(out, "HOME="+home)
 	}
-
-	return out, nil
+	return "", false
 }
 
 func getUserHome(uid int) (string, error) {
