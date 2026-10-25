@@ -77,3 +77,37 @@ func TestNew(t *testing.T) {
 
 	hook.Reset()
 }
+
+func TestMasks(t *testing.T) {
+	caps, err := New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := caps.Masks(); ok {
+		t.Fatal("want ok=false for nil config")
+	}
+
+	caps, err = New(&configs.Capabilities{
+		Bounding:    []string{"CAP_CHOWN", "CAP_KILL"},
+		Effective:   []string{"CAP_KILL"},
+		Permitted:   []string{"CAP_KILL", "CAP_NET_RAW"},
+		Inheritable: []string{},
+		Ambient:     []string{"CAP_NET_RAW"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, ok := caps.Masks()
+	if !ok {
+		t.Fatal("want ok=true")
+	}
+	const (
+		chown  = 1 << capability.CAP_CHOWN
+		kill   = 1 << capability.CAP_KILL
+		netRaw = 1 << capability.CAP_NET_RAW
+	)
+	want := Masks{Bounding: chown | kill, Effective: kill, Permitted: kill | netRaw, Ambient: netRaw}
+	if m != want {
+		t.Fatalf("want %+v, got %+v", want, m)
+	}
+}

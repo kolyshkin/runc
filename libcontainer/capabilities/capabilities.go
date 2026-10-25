@@ -148,3 +148,34 @@ func (c *Caps) ApplyCaps() error {
 
 	return nil
 }
+
+// Masks are capability sets represented as bit masks.
+type Masks struct {
+	Bounding, Effective, Permitted, Inheritable, Ambient uint64
+}
+
+// Masks returns the capability sets as bit masks, for use by a different
+// process. If ok is false, the capabilities are not to be changed.
+func (c *Caps) Masks() (m Masks, ok bool) {
+	if c.pid == nil {
+		return m, false
+	}
+	for t, mask := range map[capability.CapType]*uint64{
+		capability.BOUNDING:    &m.Bounding,
+		capability.EFFECTIVE:   &m.Effective,
+		capability.PERMITTED:   &m.Permitted,
+		capability.INHERITABLE: &m.Inheritable,
+		capability.AMBIENT:     &m.Ambient,
+	} {
+		for _, cap := range c.caps[t] {
+			*mask |= 1 << uint(cap)
+		}
+	}
+	return m, true
+}
+
+// LastCap returns the highest capability supported by the kernel.
+func LastCap() (int, error) {
+	last, err := capability.LastCap()
+	return int(last), err
+}
