@@ -3,6 +3,7 @@ package rawfork
 import (
 	"bufio"
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"io"
 	"os"
@@ -11,7 +12,9 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"syscall"
 	"testing"
+	"unsafe"
 
 	"golang.org/x/sys/unix"
 )
@@ -210,4 +213,145 @@ func TestChildCalls(t *testing.T) {
 		}
 	}
 	check(pkg + "runChild")
+}
+
+func TestIgnoreAndStore(t *testing.T) {
+	rd, wr, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rd.Close()
+	defer wr.Close()
+
+	var p Program
+	res := new(uint32)
+	p.Ops = []Op{
+		// The error is ignored, and the errno is stored.
+		{Name: "close bad fd", Trap: unix.SYS_CLOSE, Args: [6]uintptr{^uintptr(0)}, Ignore: [4]syscall.Errno{unix.EINTR, unix.EBADF}, Store: res},
+		{Name: "write", Trap: unix.SYS_WRITE, Args: [6]uintptr{wr.Fd(), p.Pin(unsafe.Pointer(res)), 4}},
+	}
+	if err := run(t, &p); err != nil {
+		t.Fatal(err)
+	}
+	var got [4]byte
+	if _, err := io.ReadFull(rd, got[:]); err != nil {
+		t.Fatal(err)
+	}
+	if errno := syscall.Errno(binary.NativeEndian.Uint32(got[:])); errno != unix.EBADF {
+		t.Fatalf("want %v, got %v", unix.EBADF, errno)
+	}
+}
+
+func TestNoSyscall(t *testing.T) {
+	var p Program
+	p.Ops = []Op{
+		{Name: "mov", Trap: NoSyscall, Args: [6]uintptr{0}, Ret: R5},
+		{Name: "test", Trap: NoSyscall, ArgRegs: [6]Reg{R5}, Cond: IfZero, Goto: 3},
+		{Name: "not reached", Trap: unix.SYS_CLOSE, Args: [6]uintptr{^uintptr(0)}},
+		{Name: "mov", Trap: NoSyscall, Args: [6]uintptr{1}, Ret: R5},
+		{Name: "test", Trap: NoSyscall, ArgRegs: [6]Reg{R5}, Cond: IfZero, Goto: 6},
+		{Name: "reached", Trap: unix.SYS_CLOSE, Args: [6]uintptr{^uintptr(0)}},
+	}
+	err := run(t, &p)
+	var serr *os.SyscallError
+	if !errors.As(err, &serr) || serr.Syscall != "reached" {
+		t.Fatalf("want error from \"reached\" op, got %v", err)
+	}
+}
+
+// TestErrReg checks that errors are reported after the program moves the
+// error descriptor elsewhere.
+func TestErrReg(t *testing.T) {
+	var p Program
+	errFd, err := p.ErrFd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	const newFd = 1000
+	p.Ops = []Op{
+		{Name: "dup3", Trap: unix.SYS_DUP3, Args: [6]uintptr{uintptr(errFd), newFd, unix.O_CLOEXEC}, Ret: ErrReg},
+		{Name: "close", Trap: unix.SYS_CLOSE, Args: [6]uintptr{uintptr(errFd)}},
+		{Name: "close bad fd", Trap: unix.SYS_CLOSE, Args: [6]uintptr{^uintptr(0)}},
+	}
+	err = run(t, &p)
+	var serr *os.SyscallError
+	if !errors.As(err, &serr) || serr.Syscall != "close bad fd" {
+		t.Fatalf("want close bad fd error, got %v", err)
+	}
+}
+
+func TestExec(t *testing.T) {
+	for _, tc := range []struct {
+		path    string
+		wantErr error
+	}{
+		{"/no/such/binary", unix.ENOENT},
+		{"/bin/sh", nil},
+	} {
+		var p Program
+		path, err := p.String(tc.path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		arg1, _ := p.String("-c")
+		arg2, _ := p.String("exit 7")
+		argv := []uintptr{path, arg1, arg2, 0}
+		envv := []uintptr{0}
+		p.Ops = []Op{
+			{Name: "exec", Trap: unix.SYS_EXECVE, Args: [6]uintptr{path, p.Pin(unsafe.Pointer(&argv[0])), p.Pin(unsafe.Pointer(&envv[0]))}},
+		}
+		proc, err := p.Start()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = proc.WaitExec()
+		if !errors.Is(err, tc.wantErr) {
+			t.Errorf("%s: want %v, got %v", tc.path, tc.wantErr, err)
+		}
+		err = proc.Wait()
+		switch {
+		case tc.wantErr != nil:
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("%s: Wait: want %v, got %v", tc.path, tc.wantErr, err)
+			}
+		case err == nil || !strings.Contains(err.Error(), "status 7"):
+			t.Errorf("%s: Wait: want exit status 7, got %v", tc.path, err)
+		}
+	}
+}
+
+func TestCgroupFD(t *testing.T) {
+	// Bad descriptor.
+	p := Program{UseCgroupFD: true, CgroupFD: -1}
+	_, err := p.Start()
+	var serr *os.SyscallError
+	if !errors.As(err, &serr) || serr.Syscall != "clone3" {
+		t.Fatalf("want clone3 error, got %v", err)
+	}
+	if errors.Is(err, unix.ENOSYS) {
+		t.Skip("clone3 not supported")
+	}
+
+	// Own cgroup (cgroup v2 only).
+	data, err := os.ReadFile("/proc/self/cgroup")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cg, ok := strings.CutPrefix(strings.TrimSpace(string(data)), "0::")
+	if !ok {
+		t.Skip("cgroup v2 required")
+	}
+	fd, err := os.Open(filepath.Join("/sys/fs/cgroup", cg))
+	if err != nil {
+		t.Skip(err)
+	}
+	defer fd.Close()
+	p = Program{UseCgroupFD: true, CgroupFD: int(fd.Fd())}
+	proc, err := p.Start()
+	if err != nil {
+		t.Skip(err) // Likely EPERM or EBUSY.
+	}
+	if err := proc.Wait(); err != nil {
+		t.Fatal(err)
+	}
 }

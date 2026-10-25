@@ -20,8 +20,9 @@ func runtime_AfterFork() //nolint:revive
 //go:linkname runtime_AfterForkInChild syscall.runtime_AfterForkInChild
 func runtime_AfterForkInChild() //nolint:revive
 
-// forkAndRun forks a child process which runs ops and exits. In the parent,
-// it returns the child's pid. In the child, it never returns.
+// forkAndRun forks a child process which runs ops and exits. If args is not
+// nil, clone3(2) is used with the specified args. In the parent, it returns
+// the child's pid. In the child, it never returns.
 //
 // Unlike package syscall, this uses fork rather than vfork, so the child has
 // its own copy of the parent's memory, and can't corrupt it.
@@ -32,14 +33,16 @@ func runtime_AfterForkInChild() //nolint:revive
 //go:noinline
 //go:norace
 //go:nocheckptr
-func forkAndRun(ops []Op, errFd uintptr) (pid int, errno syscall.Errno) {
-	// Not strictly necessary as long as the child does not exec,
-	// but let's play by the rules.
+func forkAndRun(ops []Op, errFd uintptr, args *cloneArgs) (pid int, errno syscall.Errno) {
+	// Make sure file descriptors created concurrently without O_CLOEXEC
+	// are not leaked to the child, as it may call execve(2).
 	syscall.ForkLock.Lock()
 	// No allocation or calls of non-nosplit functions from here on.
 	runtime_BeforeFork()
 	var r1 uintptr
-	if runtime.GOARCH == "s390x" {
+	if args != nil {
+		r1, _, errno = syscall.RawSyscall6(unix.SYS_CLONE3, uintptr(unsafe.Pointer(args)), unsafe.Sizeof(*args), 0, 0, 0, 0)
+	} else if runtime.GOARCH == "s390x" {
 		// On Linux/s390, the first two arguments of clone(2) are swapped.
 		r1, _, errno = syscall.RawSyscall6(unix.SYS_CLONE, 0, uintptr(unix.SIGCHLD), 0, 0, 0, 0)
 	} else {
@@ -59,7 +62,8 @@ func forkAndRun(ops []Op, errFd uintptr) (pid int, errno syscall.Errno) {
 }
 
 // runChild performs ops. If an op fails, its index and errno are written
-// to errFd, and the child exits with status of 1.
+// to the file descriptor in ErrReg (initially errFd), and the child exits
+// with status of 1.
 //
 //go:nosplit
 //go:norace
@@ -69,6 +73,7 @@ func runChild(ops []Op, errFd uintptr) {
 		regs [numRegs]uintptr
 		args [6]uintptr
 	)
+	regs[(ErrReg-1)&(numRegs-1)] = errFd
 	i := 0
 	for uint(i) < uint(len(ops)) {
 		op := &ops[i]
@@ -78,14 +83,34 @@ func runChild(ops []Op, errFd uintptr) {
 				args[j] = regs[(r-1)&(numRegs-1)]
 			}
 		}
-		r1, _, errno := syscall.RawSyscall6(op.Trap, args[0], args[1], args[2], args[3], args[4], args[5])
+		var (
+			r1    uintptr
+			errno syscall.Errno
+		)
+		if op.Trap == NoSyscall {
+			r1 = args[0]
+		} else {
+			r1, _, errno = syscall.RawSyscall6(op.Trap, args[0], args[1], args[2], args[3], args[4], args[5])
+		}
 		if errno != 0 {
-			info := [2]uint32{uint32(i), uint32(errno)}
-			_, _, _ = syscall.RawSyscall(unix.SYS_WRITE, errFd, uintptr(unsafe.Pointer(&info)), unsafe.Sizeof(info))
-			exit(1)
+			ignore := false
+			for _, e := range op.Ignore {
+				if e == errno {
+					ignore = true
+				}
+			}
+			if !ignore {
+				info := [2]uint32{uint32(i), uint32(errno)}
+				_, _, _ = syscall.RawSyscall(unix.SYS_WRITE, regs[(ErrReg-1)&(numRegs-1)], uintptr(unsafe.Pointer(&info)), unsafe.Sizeof(info))
+				exit(1)
+			}
+			r1 = uintptr(errno)
 		}
 		if op.Ret != NoReg {
 			regs[(op.Ret-1)&(numRegs-1)] = r1
+		}
+		if op.Store != nil {
+			*op.Store = uint32(r1)
 		}
 		i++
 		switch op.Cond {

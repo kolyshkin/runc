@@ -23,10 +23,32 @@ const (
 	R2
 	R3
 	R4
+	R5
+	R6
+	R7
+	R8
+	R9
+	R10
+	R11
+	R12
+	R13
+	R14
+	R15
+	R16
+
+	// ErrReg holds the file descriptor the child reports errors to. It is
+	// initially set to [Program.ErrFd], and can be changed by the program
+	// (for example, if it needs to move the descriptor elsewhere).
+	ErrReg = R16
 )
 
 // numRegs is the number of registers. Must be a power of 2.
-const numRegs = 4
+const numRegs = 16
+
+// NoSyscall is a special [Op.Trap] value meaning the op does not perform a
+// system call, and its result is Args[0] (which can come from a register).
+// This is useful for conditional jumps based on a register value.
+const NoSyscall = ^uintptr(0)
 
 // Cond is a condition for jumping to [Op.Goto].
 type Cond uint8
@@ -34,17 +56,18 @@ type Cond uint8
 const (
 	Never  Cond = iota // Never jump, continue with the next op.
 	Always             // Always jump.
-	IfZero             // Jump if the system call returned 0.
+	IfZero             // Jump if the result is 0.
 )
 
-// Op is a single operation (a system call) performed by the child.
+// Op is a single operation (normally, a system call) performed by the child.
 //
-// If the system call fails, the child exits, and [Process.Wait] returns an
-// [os.SyscallError] with the Name of the failed op.
+// If the system call fails (and the error is not ignored), the child exits,
+// and [Process.Wait] returns an [os.SyscallError] with the Name of the failed
+// op.
 type Op struct {
 	// Name describes the op in error messages.
 	Name string
-	// Trap is the system call number.
+	// Trap is the system call number, or NoSyscall.
 	Trap uintptr
 	// Args are the system call arguments. Pointers must be obtained using
 	// [Program.Pin] or one of its wrappers.
@@ -52,8 +75,14 @@ type Op struct {
 	// ArgRegs, if ArgRegs[i] is not NoReg, makes the child use the value of
 	// the specified register instead of Args[i].
 	ArgRegs [6]Reg
-	// Ret, if not NoReg, is the register to store the system call result in.
+	// Ignore is a list of system call errors which are not fatal. If the
+	// system call fails with one of these, the program continues, and the
+	// result is the (positive) error number.
+	Ignore [4]syscall.Errno
+	// Ret, if not NoReg, is the register to store the result in.
 	Ret Reg
+	// Store, if not nil, is where to store the (truncated) result.
+	Store *uint32
 	// Cond and Goto set the index of the op to perform next. Goto equal
 	// to the number of ops ends the program.
 	Cond Cond
@@ -65,8 +94,13 @@ type Op struct {
 // Once the last op is performed, the child exits with the status of 0.
 type Program struct {
 	Ops []Op
+	// UseCgroupFD and CgroupFD make the child start in the specified cgroup
+	// (using clone3 with CLONE_INTO_CGROUP).
+	UseCgroupFD bool
+	CgroupFD    int
 
-	pins []unsafe.Pointer
+	pins         []unsafe.Pointer
+	errRd, errWr *os.File
 }
 
 // Pin returns the address of ptr suitable for use in [Op.Args], and keeps the
@@ -90,6 +124,21 @@ func (p *Program) String(s string) (uintptr, error) {
 		return 0, err
 	}
 	return p.Pin(unsafe.Pointer(b)), nil
+}
+
+// ErrFd returns the file descriptor which the child uses to report errors
+// (initial value of [ErrReg]). It is only needed for programs which rearrange
+// file descriptors. The descriptor has O_CLOEXEC flag set, so that the parent
+// can tell when the child successfully calls execve(2).
+func (p *Program) ErrFd() (int, error) {
+	if p.errWr == nil {
+		var err error
+		p.errRd, p.errWr, err = os.Pipe()
+		if err != nil {
+			return -1, err
+		}
+	}
+	return int(p.errWr.Fd()), nil
 }
 
 func (p *Program) validate() error {
@@ -121,6 +170,22 @@ type Process struct {
 
 	ops     []Op
 	errPipe *os.File
+	opErr   error
+}
+
+// cloneArgs is struct clone_args from linux/sched.h.
+type cloneArgs struct {
+	flags      uint64
+	pidFD      uint64
+	childTID   uint64
+	parentTID  uint64
+	exitSignal uint64
+	stack      uint64
+	stackSize  uint64
+	tls        uint64
+	setTID     uint64
+	setTIDSize uint64
+	cgroup     uint64
 }
 
 // Start forks a child process which runs p.
@@ -128,31 +193,77 @@ type Process struct {
 // The child inherits all file descriptors of the parent, including those
 // with O_CLOEXEC flag set. Note that until the child exits, it may keep
 // open the descriptors which are closed by the parent.
+//
+// The child also inherits the properties of the calling thread, such as
+// CPU affinity, or PID namespace for children (see setns(2)). To use these,
+// the caller should lock the goroutine to the OS thread.
 func (p *Program) Start() (*Process, error) {
 	if err := p.validate(); err != nil {
 		return nil, err
 	}
-	rd, wr, err := os.Pipe()
+	errFd, err := p.ErrFd()
 	if err != nil {
 		return nil, err
 	}
-	pid, errno := forkAndRun(p.Ops, wr.Fd())
+	var args *cloneArgs
+	if p.UseCgroupFD {
+		args = &cloneArgs{
+			flags:      unix.CLONE_INTO_CGROUP,
+			exitSignal: uint64(unix.SIGCHLD),
+			cgroup:     uint64(p.CgroupFD),
+		}
+	}
+	pid, errno := forkAndRun(p.Ops, uintptr(errFd), args)
 	runtime.KeepAlive(p)
-	wr.Close()
+	runtime.KeepAlive(args)
+	rd := p.errRd
+	p.errWr.Close()
+	p.errRd, p.errWr = nil, nil
 	if errno != 0 {
 		rd.Close()
-		return nil, os.NewSyscallError("clone", errno)
+		name := "clone"
+		if args != nil {
+			name = "clone3"
+		}
+		return nil, os.NewSyscallError(name, errno)
 	}
 	return &Process{Pid: pid, ops: p.Ops, errPipe: rd}, nil
+}
+
+// readErr reads the error report from the child, if any. It returns once the
+// child has either reported an error, exited, or successfully called execve.
+func (c *Process) readErr() error {
+	if c.errPipe == nil {
+		return c.opErr
+	}
+	var info [8]byte
+	// EOF (no error info) is fine.
+	n, _ := io.ReadFull(c.errPipe, info[:])
+	c.errPipe.Close()
+	c.errPipe = nil
+	if n == len(info) {
+		idx := int(binary.NativeEndian.Uint32(info[0:]))
+		errno := syscall.Errno(binary.NativeEndian.Uint32(info[4:]))
+		name := fmt.Sprintf("op %d", idx)
+		if idx >= 0 && idx < len(c.ops) {
+			name = c.ops[idx].Name
+		}
+		c.opErr = os.NewSyscallError(name, errno)
+	}
+	return c.opErr
+}
+
+// WaitExec waits for the child to either successfully call execve(2), or
+// exit. It returns an [os.SyscallError] if an op has failed (in which case
+// the child has exited, and the caller should use [Process.Wait] to reap it).
+func (c *Process) WaitExec() error {
+	return c.readErr()
 }
 
 // Wait waits for the child to exit. It returns an [os.SyscallError] if an op
 // has failed, or a generic error if the child exited abnormally.
 func (c *Process) Wait() error {
-	var info [8]byte
-	// EOF (no error info) is fine.
-	n, _ := io.ReadFull(c.errPipe, info[:])
-	c.errPipe.Close()
+	opErr := c.readErr()
 
 	var (
 		ws  unix.WaitStatus
@@ -167,15 +278,8 @@ func (c *Process) Wait() error {
 	if err != nil {
 		return os.NewSyscallError("wait4", err)
 	}
-
-	if n == len(info) {
-		idx := int(binary.NativeEndian.Uint32(info[0:]))
-		errno := syscall.Errno(binary.NativeEndian.Uint32(info[4:]))
-		name := fmt.Sprintf("op %d", idx)
-		if idx >= 0 && idx < len(c.ops) {
-			name = c.ops[idx].Name
-		}
-		return os.NewSyscallError(name, errno)
+	if opErr != nil {
+		return opErr
 	}
 	switch {
 	case ws.Exited() && ws.ExitStatus() == 0:
