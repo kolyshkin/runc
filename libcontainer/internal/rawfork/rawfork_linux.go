@@ -197,6 +197,9 @@ type cloneArgs struct {
 // The child also inherits the properties of the calling thread, such as
 // CPU affinity, or PID namespace for children (see setns(2)). To use these,
 // the caller should lock the goroutine to the OS thread.
+//
+// If Start fails, it can be called again (for example, with a different
+// [Program.CgroupFD]).
 func (p *Program) Start() (*Process, error) {
 	if err := p.validate(); err != nil {
 		return nil, err
@@ -216,17 +219,19 @@ func (p *Program) Start() (*Process, error) {
 	pid, errno := forkAndRun(p.Ops, uintptr(errFd), args)
 	runtime.KeepAlive(p)
 	runtime.KeepAlive(args)
-	rd := p.errRd
-	p.errWr.Close()
-	p.errRd, p.errWr = nil, nil
 	if errno != 0 {
-		rd.Close()
+		// Keep the error pipe, so that p can be started again (for
+		// example, with a different cgroup), with the same ErrFd
+		// (which ops may depend upon, see SetFds).
 		name := "clone"
 		if args != nil {
 			name = "clone3"
 		}
 		return nil, os.NewSyscallError(name, errno)
 	}
+	rd := p.errRd
+	p.errWr.Close()
+	p.errRd, p.errWr = nil, nil
 	return &Process{Pid: pid, ops: p.Ops, errPipe: rd}, nil
 }
 
