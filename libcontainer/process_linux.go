@@ -552,24 +552,7 @@ func (p *setnsProcess) start() (retErr error) {
 			if err := writeSync(p.comm.syncSockParent, procSeccompDone); err != nil {
 				return err
 			}
-
-			bundle, annotations := utils.Annotations(p.config.Config.Labels)
-			containerProcessState := &specs.ContainerProcessState{
-				Version:  specs.Version,
-				Fds:      []string{specs.SeccompFdName},
-				Pid:      p.cmd.Process.Pid,
-				Metadata: p.config.Config.Seccomp.ListenerMetadata,
-				State: specs.State{
-					Version:     specs.Version,
-					ID:          p.config.ContainerID,
-					Status:      specs.StateRunning,
-					Pid:         p.initProcessPid,
-					Bundle:      bundle,
-					Annotations: annotations,
-				},
-			}
-			if err := sendContainerProcessState(p.config.Config.Seccomp.ListenerPath,
-				containerProcessState, seccompFd); err != nil {
+			if err := p.sendSeccompListener(seccompFd); err != nil {
 				return err
 			}
 		default:
@@ -590,6 +573,28 @@ func (p *setnsProcess) start() (retErr error) {
 		return ierr
 	}
 	return nil
+}
+
+// sendSeccompListener sends the seccomp listener fd, together with the
+// process state, to the seccomp agent.
+func (p *setnsProcess) sendSeccompListener(seccompFd *os.File) error {
+	bundle, annotations := utils.Annotations(p.config.Config.Labels)
+	containerProcessState := &specs.ContainerProcessState{
+		Version:  specs.Version,
+		Fds:      []string{specs.SeccompFdName},
+		Pid:      p.cmd.Process.Pid,
+		Metadata: p.config.Config.Seccomp.ListenerMetadata,
+		State: specs.State{
+			Version:     specs.Version,
+			ID:          p.config.ContainerID,
+			Status:      specs.StateRunning,
+			Pid:         p.initProcessPid,
+			Bundle:      bundle,
+			Annotations: annotations,
+		},
+	}
+	return sendContainerProcessState(p.config.Config.Seccomp.ListenerPath,
+		containerProcessState, seccompFd)
 }
 
 // execSetns runs the process that executes C code to perform the setns calls
