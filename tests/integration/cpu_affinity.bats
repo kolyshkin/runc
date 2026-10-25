@@ -37,6 +37,15 @@ function cpus_to_mask() {
 	printf "0x%x" $mask
 }
 
+# Check the initial CPU affinity of runc init, as printed by nsexec. With raw
+# exec (runc built with rawexec tag), there is no runc init, so nothing to check.
+function assert_initial_affinity() {
+	if [[ "$output" == *"raw exec: started pid"* ]]; then
+		return
+	fi
+	assert_output --regexp "nsexec.*: affinity: $1"
+}
+
 @test "runc exec [CPU affinity, only initial set from process.json]" {
 	first="$(first_cpu)"
 	second=$((first + 1)) # Hacky; might not work in all environments.
@@ -56,7 +65,7 @@ function cpus_to_mask() {
 		mask=$(cpus_to_mask "$cpus")
 		echo "CPUS: $cpus, mask: $mask"
 		run -0 runc --debug exec --process <(echo "$proc") ct1
-		assert_output --regexp "nsexec.*: affinity: $mask"
+		assert_initial_affinity "$mask"
 	done
 }
 
@@ -81,7 +90,7 @@ function cpus_to_mask() {
 		exp=${cpus//,/-} # "," --> "-".
 		echo "CPUS: $cpus, mask: $mask, final: $exp"
 		run -0 runc --debug exec --process <(echo "$proc") ct1
-		assert_output --regexp "nsexec.*: affinity: $mask"
+		assert_initial_affinity "$mask"
 		assert_output --partial "Cpus_allowed_list:	$exp" # Mind the literal tab.
 	done
 }
@@ -97,7 +106,7 @@ function cpus_to_mask() {
 
 	run -0 runc --debug exec ct1 grep "Cpus_allowed_list:" /proc/self/status
 	mask=$(cpus_to_mask "$initial")
-	assert_output --regexp "nsexec.*: affinity: $mask"
+	assert_initial_affinity "$mask"
 	assert_output --partial "Cpus_allowed_list:	$final" # Mind the literal tab.
 }
 

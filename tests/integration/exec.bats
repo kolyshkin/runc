@@ -155,6 +155,10 @@ function teardown() {
 }
 
 function check_exec_debug() {
+	# With raw exec (runc built with rawexec tag), there is no runc init.
+	if [[ "$*" == *"raw exec: started pid"* ]]; then
+		return
+	fi
 	[[ "$*" == *"nsexec container setup"* ]]
 	[[ "$*" == *"child process in init()"* ]]
 	[[ "$*" == *"setns_init: about to exec"* ]]
