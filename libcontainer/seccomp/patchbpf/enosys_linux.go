@@ -692,9 +692,6 @@ func filterFlags(config *configs.Seccomp, filter *libseccomp.ScmpFilter) (flags 
 }
 
 func sysSeccompSetFilter(flags uint, filter []unix.SockFilter) (fd int, err error) {
-	// This debug output is validated in tests/integration/seccomp.bats
-	// by the SECCOMP_FILTER_FLAG_* test.
-	logrus.Debugf("seccomp filter flags: %d", flags)
 	fprog := unix.SockFprog{
 		Len:    uint16(len(filter)),
 		Filter: &filter[0],
@@ -721,22 +718,38 @@ func sysSeccompSetFilter(flags uint, filter []unix.SockFilter) (fd int, err erro
 	return fd, err
 }
 
-// PatchAndLoad takes a seccomp configuration and a libseccomp filter which has
-// been pre-configured with the set of rules in the seccomp config. It then
-// patches said filter to handle -ENOSYS in a much nicer manner than the
-// default libseccomp default action behaviour, and loads the patched filter
-// into the kernel for the current process.
-func PatchAndLoad(config *configs.Seccomp, filter *libseccomp.ScmpFilter) (int, error) {
+// Patch takes a seccomp configuration and a libseccomp filter which has been
+// pre-configured with the set of rules in the seccomp config. It then patches
+// said filter to handle -ENOSYS in a much nicer manner than the default
+// libseccomp default action behaviour. It returns the patched filter, and
+// the flags for seccomp(2), and whether no_new_privs is requested.
+//
+// If flags is 0, prctl(PR_SET_SECCOMP) can be used to load the filter.
+func Patch(config *configs.Seccomp, filter *libseccomp.ScmpFilter) (fprog []unix.SockFilter, flags uint, noNewPrivs bool, _ error) {
 	// Generate a patched filter.
 	fprog, err := enosysPatchFilter(config, filter)
 	if err != nil {
-		return -1, fmt.Errorf("error patching filter: %w", err)
+		return nil, 0, false, fmt.Errorf("error patching filter: %w", err)
 	}
 
 	// Get the set of libseccomp flags set.
-	seccompFlags, noNewPrivs, err := filterFlags(config, filter)
+	flags, noNewPrivs, err = filterFlags(config, filter)
 	if err != nil {
-		return -1, fmt.Errorf("unable to fetch seccomp filter flags: %w", err)
+		return nil, 0, false, fmt.Errorf("unable to fetch seccomp filter flags: %w", err)
+	}
+	// This debug output is validated in tests/integration/seccomp.bats
+	// by the SECCOMP_FILTER_FLAG_* test.
+	logrus.Debugf("seccomp filter flags: %d", flags)
+
+	return fprog, flags, noNewPrivs, nil
+}
+
+// PatchAndLoad is like [Patch], but it also loads the patched filter into the
+// kernel for the current process.
+func PatchAndLoad(config *configs.Seccomp, filter *libseccomp.ScmpFilter) (int, error) {
+	fprog, seccompFlags, noNewPrivs, err := Patch(config, filter)
+	if err != nil {
+		return -1, err
 	}
 
 	// Set no_new_privs if it was requested, though in runc we handle
