@@ -54,9 +54,10 @@ const NoSyscall = ^uintptr(0)
 type Cond uint8
 
 const (
-	Never  Cond = iota // Never jump, continue with the next op.
-	Always             // Always jump.
-	IfZero             // Jump if the result is 0.
+	Never   Cond = iota // Never jump, continue with the next op.
+	Always              // Always jump.
+	IfZero              // Jump if the result is 0.
+	IfError             // Jump if the system call failed (see [Op.Ignore]).
 )
 
 // Op is a single operation (normally, a system call) performed by the child.
@@ -77,7 +78,8 @@ type Op struct {
 	ArgRegs [6]Reg
 	// Ignore is a list of system call errors which are not fatal. If the
 	// system call fails with one of these, the program continues, and the
-	// result is the (positive) error number.
+	// result is the (positive) error number. As it may be indistinguishable
+	// from a successful result, use [IfError] to check for an error.
 	Ignore [4]syscall.Errno
 	// Ret, if not NoReg, is the register to store the result in.
 	Ret Reg
@@ -153,7 +155,7 @@ func (p *Program) validate() error {
 		}
 		switch op.Cond {
 		case Never:
-		case Always, IfZero:
+		case Always, IfZero, IfError:
 			if op.Goto < 0 || op.Goto > len(p.Ops) {
 				return fmt.Errorf("op %d (%s): invalid goto %d", i, op.Name, op.Goto)
 			}

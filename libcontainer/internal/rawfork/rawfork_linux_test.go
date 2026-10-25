@@ -135,7 +135,7 @@ func TestValidate(t *testing.T) {
 		{Name: "bad ret reg", Ret: numRegs + 1},
 		{Name: "bad goto", Cond: Always, Goto: 2},
 		{Name: "negative goto", Cond: IfZero, Goto: -1},
-		{Name: "bad cond", Cond: IfZero + 1},
+		{Name: "bad cond", Cond: IfError + 1},
 	} {
 		p := Program{Ops: []Op{op}}
 		if _, err := p.Start(); err == nil || !strings.Contains(err.Error(), op.Name) {
@@ -250,6 +250,23 @@ func TestNoSyscall(t *testing.T) {
 		{Name: "not reached", Trap: unix.SYS_CLOSE, Args: [6]uintptr{^uintptr(0)}},
 		{Name: "mov", Trap: NoSyscall, Args: [6]uintptr{1}, Ret: R5},
 		{Name: "test", Trap: NoSyscall, ArgRegs: [6]Reg{R5}, Cond: IfZero, Goto: 6},
+		{Name: "reached", Trap: unix.SYS_CLOSE, Args: [6]uintptr{^uintptr(0)}},
+	}
+	err := run(t, &p)
+	var serr *os.SyscallError
+	if !errors.As(err, &serr) || serr.Syscall != "reached" {
+		t.Fatalf("want error from \"reached\" op, got %v", err)
+	}
+}
+
+func TestIfError(t *testing.T) {
+	var p Program
+	// Both ops have the same result (EBADF is 9), but only the first one
+	// has failed.
+	p.Ops = []Op{
+		{Name: "close bad fd", Trap: unix.SYS_CLOSE, Args: [6]uintptr{^uintptr(0)}, Ignore: [4]syscall.Errno{unix.EBADF}, Cond: IfError, Goto: 2},
+		{Name: "not reached", Trap: unix.SYS_CLOSE, Args: [6]uintptr{^uintptr(0)}},
+		{Name: "mov", Trap: NoSyscall, Args: [6]uintptr{uintptr(unix.EBADF)}, Cond: IfError, Goto: 4},
 		{Name: "reached", Trap: unix.SYS_CLOSE, Args: [6]uintptr{^uintptr(0)}},
 	}
 	err := run(t, &p)

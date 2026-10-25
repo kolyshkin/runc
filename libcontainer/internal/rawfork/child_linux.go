@@ -120,6 +120,10 @@ func runChild(ops []Op, errFd uintptr) {
 			if r1 == 0 {
 				i = op.Goto
 			}
+		case IfError:
+			if errno != 0 {
+				i = op.Goto
+			}
 		}
 	}
 	exit(0)
