@@ -372,3 +372,68 @@ func TestCgroupFD(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestReparent(t *testing.T) {
+	rd, wr, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rd.Close()
+	defer wr.Close()
+
+	var p Program
+	pid := new(uint32)
+	flags := uintptr(unix.CLONE_PARENT | unix.SIGCHLD)
+	args := [6]uintptr{flags}
+	if runtime.GOARCH == "s390x" {
+		args = [6]uintptr{0, flags}
+	}
+	// The child writes the grandchild's pid and exits, and the grandchild
+	// exits with status of 3.
+	p.Ops = []Op{
+		{Name: "fork", Trap: unix.SYS_CLONE, Args: args, Store: pid, Cond: IfZero, Goto: 3},
+		{Name: "write pid", Trap: unix.SYS_WRITE, Args: [6]uintptr{wr.Fd(), p.Pin(unsafe.Pointer(pid)), 4}},
+		{Name: "exit", Trap: unix.SYS_EXIT_GROUP},
+		{Name: "exit 3", Trap: unix.SYS_EXIT_GROUP, Args: [6]uintptr{3}},
+	}
+	proc, err := p.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	wr.Close()
+	child := proc.Pid
+	var buf [4]byte
+	if _, err := io.ReadFull(rd, buf[:]); err != nil {
+		_ = proc.Wait()
+		t.Fatal(err)
+	}
+	gchild := int(binary.NativeEndian.Uint32(buf[:]))
+	if err := proc.Reparent(gchild); err != nil {
+		t.Fatal(err)
+	}
+	if gchild == child || proc.Pid != gchild {
+		t.Fatalf("want pid %d (child %d), got %d", gchild, child, proc.Pid)
+	}
+	err = proc.Wait()
+	if err == nil || !strings.Contains(err.Error(), "status 3") {
+		t.Fatalf("want exit status 3 error, got %v", err)
+	}
+}
+
+func TestReparentNotChild(t *testing.T) {
+	proc, err := (&Program{}).Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	child := proc.Pid
+	// Our own pid is not our child.
+	if err := proc.Reparent(os.Getpid()); !errors.Is(err, unix.ECHILD) {
+		t.Errorf("want ECHILD, got %v", err)
+	}
+	if proc.Pid != child {
+		t.Errorf("want pid %d unchanged, got %d", child, proc.Pid)
+	}
+	if err := proc.Wait(); err != nil {
+		t.Fatal(err)
+	}
+}

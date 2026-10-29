@@ -271,23 +271,53 @@ func (c *Process) WaitExec() error {
 // has failed, or a generic error if the child exited abnormally.
 func (c *Process) Wait() error {
 	opErr := c.readErr()
-
-	var (
-		ws  unix.WaitStatus
-		err error
-	)
-	for {
-		_, err = unix.Wait4(c.Pid, &ws, 0, nil)
-		if err != unix.EINTR {
-			break
-		}
-	}
+	ws, err := c.reap()
 	if err != nil {
-		return os.NewSyscallError("wait4", err)
+		return err
 	}
 	if opErr != nil {
 		return opErr
 	}
+	return statusErr(ws)
+}
+
+// Reparent is for a program which forks a grandchild using clone(2) with
+// CLONE_PARENT flag (so the grandchild is a child of the caller), then exits.
+// It reaps the child, and makes c refer to the grandchild (pid), which
+// performs the rest of the program. An error is returned if the child exited
+// abnormally; c refers to the grandchild nevertheless.
+//
+// If pid is not a child of the caller (for example, if it is a pid in another
+// PID namespace), an error is returned, and c is not changed.
+func (c *Process) Reparent(pid int) error {
+	// WNOWAIT leaves the child (if it has exited) to be reaped later.
+	var info unix.Siginfo
+	if err := unix.Waitid(unix.P_PID, pid, &info, unix.WEXITED|unix.WNOHANG|unix.WNOWAIT, nil); err != nil {
+		return fmt.Errorf("grandchild pid %d: %w", pid, os.NewSyscallError("waitid", err))
+	}
+	// Don't read the error report, as the grandchild may still be running.
+	ws, err := c.reap()
+	c.Pid = pid
+	if err != nil {
+		return err
+	}
+	return statusErr(ws)
+}
+
+func (c *Process) reap() (unix.WaitStatus, error) {
+	var ws unix.WaitStatus
+	for {
+		_, err := unix.Wait4(c.Pid, &ws, 0, nil)
+		if err == nil {
+			return ws, nil
+		}
+		if err != unix.EINTR {
+			return ws, os.NewSyscallError("wait4", err)
+		}
+	}
+}
+
+func statusErr(ws unix.WaitStatus) error {
 	switch {
 	case ws.Exited() && ws.ExitStatus() == 0:
 		return nil
