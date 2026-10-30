@@ -540,7 +540,7 @@ func (p *setnsProcess) start() (retErr error) {
 			if err := json.Unmarshal(*sync.Arg, &srcFd); err != nil {
 				return fmt.Errorf("sync %q passed invalid fd arg: %w", sync.Type, err)
 			}
-			seccompFd, err := pidGetFd(p.pid(), srcFd)
+			seccompFd, err := linux.PidGetFd(p.pid(), srcFd)
 			if err != nil {
 				return fmt.Errorf("sync %q get fd %d from child failed: %w", sync.Type, srcFd, err)
 			}
@@ -953,7 +953,7 @@ func (p *initProcess) start() (retErr error) {
 			if err := json.Unmarshal(*sync.Arg, &srcFd); err != nil {
 				return fmt.Errorf("sync %q passed invalid fd arg: %w", sync.Type, err)
 			}
-			seccompFd, err := pidGetFd(p.pid(), srcFd)
+			seccompFd, err := linux.PidGetFd(p.pid(), srcFd)
 			if err != nil {
 				return fmt.Errorf("sync %q get fd %d from child failed: %w", sync.Type, srcFd, err)
 			}
@@ -1106,19 +1106,6 @@ func (p *initProcess) setupNetworkDevices() error {
 	}
 
 	return nil
-}
-
-func pidGetFd(pid, srcFd int) (*os.File, error) {
-	pidFd, err := unix.PidfdOpen(pid, 0)
-	if err != nil {
-		return nil, os.NewSyscallError("pidfd_open", err)
-	}
-	defer unix.Close(pidFd)
-	fd, err := unix.PidfdGetfd(pidFd, srcFd, 0)
-	if err != nil {
-		return nil, os.NewSyscallError("pidfd_getfd", err)
-	}
-	return os.NewFile(uintptr(fd), "[pidfd_getfd]"), nil
 }
 
 func sendContainerProcessState(listenerPath string, state *specs.ContainerProcessState, file *os.File) error {

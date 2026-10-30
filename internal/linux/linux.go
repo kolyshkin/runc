@@ -127,3 +127,18 @@ func GetPtyPeer(ptyFd uintptr, unsafePeerPath string, flags int) (*os.File, erro
 	}
 	return os.NewFile(peerFd, unsafePeerPath), nil
 }
+
+// PidGetFd returns a copy of the file descriptor srcFd of the process pid
+// (see pidfd_getfd(2)).
+func PidGetFd(pid, srcFd int) (*os.File, error) {
+	pidFd, err := unix.PidfdOpen(pid, 0)
+	if err != nil {
+		return nil, os.NewSyscallError("pidfd_open", err)
+	}
+	defer unix.Close(pidFd)
+	fd, err := unix.PidfdGetfd(pidFd, srcFd, 0)
+	if err != nil {
+		return nil, os.NewSyscallError("pidfd_getfd", err)
+	}
+	return os.NewFile(uintptr(fd), "[pidfd_getfd]"), nil
+}
