@@ -23,6 +23,7 @@ import (
 	"github.com/opencontainers/runc/libcontainer/configs"
 	"github.com/opencontainers/runc/libcontainer/exeseal"
 	"github.com/opencontainers/runc/libcontainer/intelrdt"
+	"github.com/opencontainers/runc/libcontainer/internal/rawexec"
 	"github.com/opencontainers/runc/libcontainer/system"
 	"github.com/opencontainers/runc/libcontainer/utils"
 )
@@ -529,6 +530,17 @@ func (c *Container) includeExecFifo(cmd *exec.Cmd) error {
 }
 
 func (c *Container) newParentProcess(p *Process) (parentProcess, error) {
+	if rawExecEnabled && !p.Init {
+		proc, err := c.newSetnsRawProcess(p)
+		if err == nil {
+			return proc, nil
+		}
+		if !errors.Is(err, rawexec.ErrUnsupported) {
+			return nil, err
+		}
+		logrus.Debugf("raw exec: %v, using runc init", err)
+	}
+
 	comm, err := newProcessComm()
 	if err != nil {
 		return nil, err
