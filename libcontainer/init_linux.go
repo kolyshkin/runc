@@ -24,6 +24,7 @@ import (
 	"github.com/opencontainers/runc/internal/cmsg"
 	"github.com/opencontainers/runc/internal/linux"
 	"github.com/opencontainers/runc/internal/pathrs"
+	"github.com/opencontainers/runc/internal/sys"
 	"github.com/opencontainers/runc/libcontainer/capabilities"
 	"github.com/opencontainers/runc/libcontainer/configs"
 	"github.com/opencontainers/runc/libcontainer/system"
@@ -525,7 +526,7 @@ func fixStdioPermissions(uid int) error {
 		// Skip chown if:
 		// - uid is already the one we want, or
 		// - fd is opened to /dev/null.
-		if int(s.Uid) == uid || isDevNull(&s) {
+		if int(s.Uid) == uid || sys.IsDevNull(&s) {
 			continue
 		}
 

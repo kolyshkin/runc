@@ -936,7 +936,7 @@ func reOpenDevNull() error {
 		if err := unix.Fstat(fd, &stat); err != nil {
 			return &os.PathError{Op: "fstat", Path: "fd " + strconv.Itoa(fd), Err: err}
 		}
-		if isDevNull(&stat) {
+		if sys.IsDevNull(&stat) {
 			// Close and re-open the fd.
 			if err := linux.Dup3(int(file.Fd()), fd, 0); err != nil {
 				return err
@@ -1308,14 +1308,9 @@ func remountReadonly(m *configs.Mount) error {
 	return fmt.Errorf("unable to mount %s as readonly max retries reached", dest)
 }
 
-func isDevNull(st *unix.Stat_t) bool {
-	//nolint:unconvert // Rdev is uint32 on MIPS.
-	return st.Mode&unix.S_IFMT == unix.S_IFCHR && uint64(st.Rdev) == unix.Mkdev(1, 3)
-}
-
 func verifyDevNull(f *os.File) error {
 	return sys.VerifyInode(f, func(st *unix.Stat_t, _ *unix.Statfs_t) error {
-		if !isDevNull(st) {
+		if !sys.IsDevNull(st) {
 			return errors.New("container's /dev/null is invalid")
 		}
 		return nil
