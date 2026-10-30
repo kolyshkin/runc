@@ -378,6 +378,34 @@ func (p *setnsRawProcess) allocPty() (int, error) {
 	return int(peer.Fd()), nil
 }
 
+// startWithCgroupFallback starts the child after it failed to start in the
+// configured cgroup (with startErr), doing the same as addIntoCgroupV2 does:
+// unless a sub-cgroup is explicitly requested, fall back to container init's
+// cgroup, and ignore the errors for rootless.
+func (p *setnsRawProcess) startWithCgroupFallback(startErr error) (*rawfork.Process, error) {
+	err := startErr
+	if path := p.initProcessCgroupPath(); path != "" && p.process.SubCgroupPaths[""] == "" {
+		logrus.Debugf("starting in configured cgroup failed (%v), will start in container init cgroup %q", err, path)
+		// NOTE: path is not guaranteed to exist because we didn't pause the container.
+		var fd *os.File
+		fd, err = cgroups.OpenFile(path, "", unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC)
+		if err == nil {
+			defer fd.Close()
+			p.program.CgroupFD = int(fd.Fd())
+			var proc *rawfork.Process
+			if proc, err = p.program.Start(); err == nil {
+				return proc, nil
+			}
+		}
+	}
+	if p.rootlessCgroups {
+		// Ignore cgroup join errors when rootless.
+		p.program.UseCgroupFD = false
+		return p.program.Start()
+	}
+	return nil, fmt.Errorf("error adding pid of new process to cgroups: %w", err)
+}
+
 func (p *setnsRawProcess) closeFiles() {
 	for _, f := range p.files {
 		f.Close()
@@ -444,6 +472,9 @@ func (p *setnsRawProcess) start() (retErr error) {
 			return
 		}
 		proc, err := p.program.Start()
+		if err != nil && p.program.UseCgroupFD {
+			proc, err = p.startWithCgroupFallback(err)
+		}
 		resCh <- result{proc: proc, err: err}
 	}()
 	res := <-resCh
