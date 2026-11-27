@@ -22,7 +22,7 @@ grep -q ^PLATFORM_ID /etc/os-release && PLATFORM_ID="$(grep -oP '^PLATFORM_ID="\
 
 gha_group "Install packages"
 # Initialize DNF
-DNF=(dnf -y --setopt=install_weak_deps=False --setopt=tsflags=nodocs)
+DNF=(dnf -y --best --setopt=install_weak_deps=False --setopt=tsflags=nodocs)
 case "$PLATFORM_ID" in
 platform:el8)
 	# DNF+=(--exclude="kernel,kernel-core") seems to fail
@@ -41,11 +41,11 @@ platform:el9 | platform:el10)
 esac
 
 # Install common packages
-RPMS=(cargo container-selinux curl fuse-sshfs git-core glibc-static golang iptables jq libseccomp-devel lld make policycoreutils)
+RPMS=(cargo container-selinux curl fuse-sshfs git-core glibc-static golang iptables jq libseccomp-devel lld make policycoreutils selinux-policy systemd)
 # Work around dnf mirror failures by retrying a few times.
 for i in $(seq 0 2); do
 	sleep "$i"
-	"${DNF[@]}" update && "${DNF[@]}" install "${RPMS[@]}" && break
+	"${DNF[@]}" install "${RPMS[@]}" && break
 done
 # shellcheck disable=SC2181
 [ $? -eq 0 ] # fail if dnf failed
