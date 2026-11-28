@@ -1,0 +1,102 @@
+# TEMPORARY, DO NOT MERGE: run lima jobs only, dump installed RPMs.
+name: tmp-lima
+on:
+  push:
+    branches:
+      - tmp-lima-*
+permissions:
+  contents: read
+env:
+  LIBPATHRS_VERSION: "0.2.6"
+  CGO_CFLAGS: -g -O2 -Werror
+  RUNC_ALLOW_UNSAFE_TESTS: yes
+  RUN_TESTS: yes
+jobs:
+  lima:
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        # A failure in fedora-rawhide should not block merging PRs
+        template: [almalinux-8, almalinux-9, centos-stream-10, fedora, experimental/fedora-rawhide]
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - uses: lima-vm/lima-actions/setup@55627e31b78637bf254a8b2a14da8ea7d12564e5 # v1.1.0
+      id: lima-actions-setup
+
+    - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.cache/lima
+        key: lima-${{ steps.lima-actions-setup.outputs.version }}-${{ matrix.template }}
+
+    - name: "Start VM"
+      # --plain is set to disable file sharing, port forwarding, built-in containerd, etc. for faster start up
+      #
+      # CPUs: min(4, host CPU cores)
+      # RAM:  min(4 GiB, half of host memory)
+      # Disk: 100 GiB
+      run: limactl start --plain --name=default template:${{ matrix.template }}
+
+    - name: "Initialize VM"
+      run: |
+        set -eux -o pipefail
+        limactl cp -r . default:/tmp/runc
+        lima sudo /tmp/runc/script/setup_host.sh
+
+    - name: "Show guest info"
+      run: |
+        set -eux -o pipefail
+        lima uname -a
+        lima systemctl --version
+        lima df -T
+        lima cat /etc/os-release
+        lima go version
+        lima sestatus
+        lima rpm -q container-selinux
+
+    - name: "Check config"
+      run: lima /tmp/runc/script/check-config.sh
+
+    # NOTE the execution environment lacks a terminal, needed for
+    # some integration tests. So we use `ssh -tt` command to fake a terminal.
+    - if: env.RUN_TESTS == 'yes'
+      name: "Run unit tests"
+      run: ssh -tt lima-default sudo -i make -C /tmp/runc localunittest
+
+    - if: env.RUN_TESTS == 'yes'
+      name: "Run integration tests (systemd driver)"
+      run: ssh -tt lima-default sudo -i make -C /tmp/runc localintegration RUNC_USE_SYSTEMD=yes
+
+    - if: env.RUN_TESTS == 'yes'
+      name: "Run integration tests (fs driver)"
+      run: ssh -tt lima-default sudo -i make -C /tmp/runc localintegration
+    - name: "Run integration tests (systemd driver, rootless)"
+      # Needs cgroup v2
+      if: ${{ env.RUN_TESTS == 'yes' && matrix.template != 'almalinux-8' }}
+      run: ssh -tt lima-default sudo -i make -C /tmp/runc localrootlessintegration RUNC_USE_SYSTEMD=yes
+
+    - if: env.RUN_TESTS == 'yes'
+      name: "Run integration tests (fs driver, rootless)"
+      run: ssh -tt lima-default sudo -i make -C /tmp/runc localrootlessintegration
+
+    - name: "Dump RPMs"
+      if: ${{ !cancelled() }}
+      env:
+        TEMPLATE: ${{ matrix.template }}
+      run: |
+        lima rpm -qa --qf '%{NAME}.%{ARCH} %{EPOCHNUM}:%{VERSION}-%{RELEASE}\n' | sort > rpms.txt
+        wc -l rpms.txt
+        lima rpm -q systemd
+        lima systemctl show -p Version
+        lima systemctl --user show -p Version || true
+        ssh -tt lima-default sudo -u rootless systemctl --user show -p Version || true
+        echo "NAME=rpms-${TEMPLATE//\//_}" >> "$GITHUB_ENV"
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      if: ${{ !cancelled() }}
+      with:
+        name: ${{ env.NAME }}
+        path: rpms.txt
