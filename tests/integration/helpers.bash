@@ -238,7 +238,11 @@ function set_cgroups_path() {
 		fi
 		REL_CGROUPS_PATH="$REL_PARENT_PATH/$SD_UNIT_NAME"
 	else
-		REL_PARENT_PATH="/runc-cgroups-integration-test${slash_pod}"
+		# Must match CGROUP_PATH in tests/rootless.sh. Root and rootless
+		# use different parents so they can be run in parallel.
+		local parent="/runc-cgroups-integration-test"
+		[ $EUID -eq 0 ] || parent+="-rootless"
+		REL_PARENT_PATH="${parent}${slash_pod}"
 		REL_CGROUPS_PATH="$REL_PARENT_PATH/test-cgroup-${rnd}"
 		OCI_CGROUPS_PATH=$REL_CGROUPS_PATH
 	fi

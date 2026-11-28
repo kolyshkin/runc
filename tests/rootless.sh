@@ -104,7 +104,8 @@ function cleanup() {
 # shellcheck disable=SC2207
 ALL_CGROUPS=($(cut -d: -f2 </proc/self/cgroup | sed -E '{s/^name=//;s/,/\n/;/^$/D}'))
 CGROUP_MOUNT="/sys/fs/cgroup"
-CGROUP_PATH="/runc-cgroups-integration-test"
+# Must match REL_PARENT_PATH in tests/integration/helpers.bash.
+CGROUP_PATH="/runc-cgroups-integration-test-rootless"
 CGROUP_PIN_PID=-1
 
 function enable_cgroup() {
